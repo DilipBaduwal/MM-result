@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Moms Magic Firebase Fetch</title>
+<title>Moms Magic Data Fetch</title>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
@@ -12,34 +12,28 @@
 <style>
   :root {
     --bg: #f4faf5;
-    --panel: rgba(255,255,255,0.92);
-    --ink: #173124;
-    --muted: #5f7167;
+    --card: #ffffff;
+    --ink: #163023;
+    --muted: #5b6f64;
     --brand: #4a7c59;
     --brand-dark: #2f5c3a;
     --accent: #f5c842;
-    --accent-soft: #fff7d2;
-    --line: #dbe9db;
-    --shadow: 0 18px 56px rgba(33, 72, 45, 0.12);
+    --accent-soft: #fff7d1;
+    --line: #d7ead8;
+    --shadow: 0 16px 48px rgba(36, 74, 47, 0.12);
   }
   * { box-sizing: border-box; }
-  html, body {
-    margin: 0;
-    min-height: 100%;
-    background:
-      radial-gradient(circle at top, #edf8ef 0%, var(--bg) 40%, #eef3ee 100%);
-    color: var(--ink);
-    font-family: Nunito, sans-serif;
-  }
+  html, body { margin: 0; min-height: 100%; background: radial-gradient(circle at top, #edf8ef 0%, var(--bg) 45%, #eef3ee 100%); color: var(--ink); font-family: Nunito, sans-serif; }
   body:before {
     content: "";
     position: fixed;
     inset: 0;
     pointer-events: none;
     background:
-      linear-gradient(135deg, rgba(74,124,89,0.05) 0 2px, transparent 2px 100%),
+      linear-gradient(135deg, rgba(74,124,89,0.06) 0 2px, transparent 2px 100%),
       linear-gradient(45deg, rgba(245,200,66,0.05) 0 2px, transparent 2px 100%);
     background-size: 48px 48px, 72px 72px;
+    mask-image: linear-gradient(to bottom, rgba(0,0,0,0.9), rgba(0,0,0,0.2));
   }
   .shell {
     position: relative;
@@ -55,7 +49,7 @@
     box-shadow: var(--shadow);
     display: grid;
     gap: 18px;
-    grid-template-columns: 1.2fr 0.8fr;
+    grid-template-columns: 1.3fr 0.9fr;
     align-items: end;
     overflow: hidden;
     position: relative;
@@ -63,45 +57,30 @@
   .hero:after {
     content: "";
     position: absolute;
-    right: -90px;
-    top: -90px;
-    width: 240px;
-    height: 240px;
-    background: rgba(245,200,66,0.2);
+    right: -80px;
+    top: -80px;
+    width: 220px;
+    height: 220px;
+    background: rgba(245,200,66,0.22);
     border-radius: 50%;
+    filter: blur(2px);
   }
-  .eyebrow {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(255,255,255,0.12);
-    border: 1px solid rgba(255,255,255,0.18);
-    color: rgba(255,255,255,0.92);
-    border-radius: 999px;
-    padding: 8px 12px;
-    font-size: 12px;
-    font-weight: 800;
-    letter-spacing: 0.02em;
+  .title {
+    position: relative;
+    z-index: 1;
   }
-  .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--accent);
-    box-shadow: 0 0 0 6px rgba(245,200,66,0.15);
-  }
-  h1 {
-    margin: 12px 0 0;
+  .title h1 {
     font-family: "Baloo 2", cursive;
-    font-size: clamp(30px, 4vw, 52px);
-    line-height: 0.96;
+    font-size: clamp(30px, 4vw, 50px);
+    line-height: 0.95;
+    margin: 0;
   }
-  .lead {
+  .title p {
     margin: 10px 0 0;
-    max-width: 64ch;
-    color: rgba(255,255,255,0.9);
+    color: rgba(255,255,255,0.88);
+    max-width: 62ch;
     font-size: 14px;
-    line-height: 1.55;
+    line-height: 1.5;
   }
   .actions {
     position: relative;
@@ -122,37 +101,29 @@
   }
   button:hover { transform: translateY(-1px); }
   button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-  .btn-primary {
-    background: var(--accent);
-    color: #3a2f12;
-    box-shadow: 0 10px 24px rgba(245,200,66,0.28);
-  }
-  .btn-secondary {
-    background: rgba(255,255,255,0.14);
-    color: #fff;
-    border: 1px solid rgba(255,255,255,0.22);
-  }
-  .grid {
+  .btn-primary { background: var(--accent); color: #392f14; box-shadow: 0 10px 24px rgba(245,200,66,0.28); }
+  .btn-secondary { background: rgba(255,255,255,0.14); color: #fff; border: 1px solid rgba(255,255,255,0.22); }
+  .stats {
     margin-top: 18px;
     display: grid;
     gap: 14px;
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-  .card {
-    background: var(--panel);
+  .stat {
+    background: rgba(255,255,255,0.88);
     border: 1px solid rgba(74,124,89,0.12);
     border-radius: 22px;
     padding: 16px 18px;
     box-shadow: 0 10px 26px rgba(29,63,39,0.08);
   }
-  .card .label {
+  .stat .label {
     text-transform: uppercase;
     letter-spacing: 0.08em;
     font-size: 11px;
     color: var(--muted);
     font-weight: 800;
   }
-  .card .value {
+  .stat .value {
     margin-top: 8px;
     font-family: "Baloo 2", cursive;
     font-size: 34px;
@@ -161,7 +132,7 @@
   }
   .panel {
     margin-top: 18px;
-    background: var(--panel);
+    background: rgba(255,255,255,0.9);
     border: 1px solid rgba(74,124,89,0.12);
     border-radius: 28px;
     box-shadow: var(--shadow);
@@ -235,20 +206,27 @@
     font-size: 12px;
     font-weight: 800;
   }
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--brand);
+    box-shadow: 0 0 0 6px rgba(74,124,89,0.1);
+  }
   @media (max-width: 820px) {
     .hero { grid-template-columns: 1fr; }
     .actions { justify-content: flex-start; }
-    .grid { grid-template-columns: 1fr; }
+    .stats { grid-template-columns: 1fr; }
   }
 </style>
 </head>
 <body>
   <div class="shell">
     <section class="hero">
-      <div>
-        <div class="eyebrow"><span class="dot"></span> Standalone Firebase fetch app</div>
+      <div class="title">
+        <div class="pill"><span class="dot"></span> Firebase data fetch app</div>
         <h1>Moms Magic Entry Fetch</h1>
-        <p class="lead">This is a single HTML file you can upload to GitHub. It connects to Firebase, fetches score rows, shows them in a table, and lets you download the data as Excel or CSV.</p>
+        <p>Open this app when you want to pull all saved game entries from Firebase. It previews the rows and lets you download the data as Excel or CSV without touching the main game.</p>
       </div>
       <div class="actions">
         <button class="btn-secondary" id="refreshBtn">Refresh data</button>
@@ -257,10 +235,10 @@
       </div>
     </section>
 
-    <section class="grid">
-      <div class="card"><div class="label">Total rows</div><div class="value" id="totalRows">0</div></div>
-      <div class="card"><div class="label">Top score</div><div class="value" id="topScore">0</div></div>
-      <div class="card"><div class="label">Latest save</div><div class="value" id="latestSave">-</div></div>
+    <section class="stats">
+      <div class="stat"><div class="label">Total rows</div><div class="value" id="totalRows">0</div></div>
+      <div class="stat"><div class="label">Top score</div><div class="value" id="topScore">0</div></div>
+      <div class="stat"><div class="label">Latest save</div><div class="value" id="latestSave">-</div></div>
     </section>
 
     <section class="panel">
@@ -291,7 +269,7 @@
             </tr>
           </thead>
           <tbody id="rowsBody">
-            <tr><td colspan="13" style="padding:22px 14px;color:#5f7167;">Click Refresh data to load rows.</td></tr>
+            <tr><td colspan="13" style="padding:22px 14px;color:#5b6f64;">Click Refresh data to load rows.</td></tr>
           </tbody>
         </table>
       </div>
@@ -329,15 +307,6 @@ function downloadFile(filename, payload, mimeType){
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function escapeHtml(value){
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/\"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
 function normalizeScoreRow(value, index){
   return {
     "Sl.no": index + 1,
@@ -352,14 +321,14 @@ function normalizeScoreRow(value, index){
     "district": value.district || "",
     "shop district": value.shopDistrict || "",
     "timestamp": value.timestamp ? new Date(Number(value.timestamp)).toLocaleString("en-IN") : "",
-    "date": value.date || ""
+    "date": value.date || "",
   };
 }
 
 function buildTableRows(rows){
   const body = document.getElementById("rowsBody");
   if(!rows.length){
-    body.innerHTML = '<tr><td colspan="13" style="padding:22px 14px;color:#5f7167;">No scores found yet.</td></tr>';
+    body.innerHTML = '<tr><td colspan="13" style="padding:22px 14px;color:#5b6f64;">No scores found yet.</td></tr>';
     return;
   }
   body.innerHTML = rows.map(row => `
@@ -381,12 +350,21 @@ function buildTableRows(rows){
   `).join("");
 }
 
+function escapeHtml(value){
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 async function loadScores(){
   const statusText = document.getElementById("statusText");
   const metaText = document.getElementById("metaText");
   statusText.textContent = "Connecting to Firebase...";
   if(!auth.currentUser){
-    try { await auth.signInAnonymously(); } catch (error) { /* anonymous auth may already be allowed */ }
+    try { await auth.signInAnonymously(); } catch (error) {}
   }
   const snap = await db.ref("scores").once("value");
   const rows = [];
@@ -397,19 +375,53 @@ async function loadScores(){
     }
   });
   rows.sort((a, b) => Number(b.score) - Number(a.score));
-  allScores = rows;
-  const exportRows = rows.map(normalizeScoreRow);
+  // fetch passive visit logs and include them in exports (name will be 'Unknown')
+  const visitSnap = await db.ref("visitLogs").once("value");
+  const visits = [];
+  visitSnap.forEach(c=>{const v=c.val(); if(v) visits.push(v);});
+  // build export rows: scored entries first, then visits
+  const scoreExportRows = rows.map(normalizeScoreRow);
+  const visitExportRows = visits.map((v,i)=>({
+    "Sl.no": rows.length + i + 1,
+    "Name": v.name || "Unknown",
+    "Lat": v.userLatitude ?? "",
+    "long": v.userLongitude ?? "",
+    "shop captured status": "",
+    "shop name": "",
+    "Game score": "",
+    "Survey question1 response": "",
+    "Survey question2 response": "",
+    "district": "",
+    "shop district": "",
+    "timestamp": v.timestamp ? new Date(Number(v.timestamp)).toLocaleString("en-IN") : "",
+    "date": v.date || (v.timestamp ? new Date(Number(v.timestamp)).toLocaleDateString("en-IN") : ""),
+  }));
+  const exportRows = scoreExportRows.concat(visitExportRows);
+  allScores = rows; // keep allScores as scored entries for legacy functions
   buildTableRows(exportRows);
-  document.getElementById("totalRows").textContent = String(rows.length);
+  document.getElementById("totalRows").textContent = String(rows.length + visits.length);
   document.getElementById("topScore").textContent = rows.length ? String(Number(rows[0].score) || 0) : "0";
-  document.getElementById("latestSave").textContent = rows.length ? (rows[0].date || "-") : "-";
+  // Determine the chronological latest save (by timestamp) and show player name
+  let latestRow = null;
+  if(rows.length){
+    latestRow = rows.reduce((m, r) => (Number(r.timestamp || 0) > Number(m.timestamp || 0) ? r : m), rows[0]);
+  }
+  if(latestRow && (latestRow.timestamp || latestRow.date || latestRow.name)){
+    const when = latestRow.date || (latestRow.timestamp ? new Date(Number(latestRow.timestamp)).toLocaleString("en-IN") : "-");
+    const who = latestRow.name || "-";
+    document.getElementById("latestSave").textContent = `${who} — ${when}`;
+  } else {
+    document.getElementById("latestSave").textContent = "-";
+  }
   metaText.textContent = rows.length ? `Loaded ${rows.length} rows from Firebase.` : "Firebase is reachable, but no score rows were found.";
   statusText.textContent = "Data loaded from Firebase successfully.";
+  // store for download
+  window._exportRowsAll = exportRows;
   return exportRows;
 }
 
 function getExportRows(){
-  return allScores.map(normalizeScoreRow);
+  return window._exportRowsAll || allScores.map(normalizeScoreRow);
 }
 
 function downloadAsExcel(rows){
@@ -434,11 +446,11 @@ function downloadAsCsv(rows){
     "district",
     "shop district",
     "timestamp",
-    "date"
+    "date",
   ];
   const csv = [
     headers.join(","),
-    ...rows.map(row => headers.map(header => `"${String(row[header] ?? "").replace(/"/g, '""')}"`).join(","))
+    ...rows.map(row => headers.map(header => `"${String(row[header] ?? "").replace(/"/g, '""')}"`).join(",")),
   ].join("\n");
   downloadFile("momsmagic-entries.csv", csv, "text/csv;charset=utf-8");
 }
