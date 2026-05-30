@@ -259,11 +259,11 @@
               <th>long</th>
               <th>shop captured status</th>
               <th>shop name</th>
+              <th>personal number</th>
               <th>Game score</th>
               <th>Survey question1 response</th>
               <th>Survey question2 response</th>
               <th>district</th>
-              <th>shop district</th>
               <th>timestamp</th>
               <th>date</th>
             </tr>
@@ -294,6 +294,10 @@ const db = firebase.database();
 const auth = firebase.auth();
 let allScores = [];
 
+function isPhoneLike(value){
+  return /^\+?[0-9][0-9\s-]{5,}$/.test(String(value || "").trim());
+}
+
 function downloadFile(filename, payload, mimeType){
   const blob = payload instanceof Blob ? payload : new Blob([payload], { type: mimeType });
   const url = URL.createObjectURL(blob);
@@ -308,18 +312,21 @@ function downloadFile(filename, payload, mimeType){
 }
 
 function normalizeScoreRow(value, index){
+  const shopName = String(value.shopName || "").trim();
+  const personalNumber = String(value.personalNumber || "").trim();
+  const personalValue = personalNumber || (isPhoneLike(shopName) ? shopName : "");
   return {
     "Sl.no": index + 1,
     "Name": value.name || "",
     "Lat": value.userLatitude ?? "",
     "long": value.userLongitude ?? "",
-    "shop captured status": value.shopName ? "Captured" : "Not captured",
-    "shop name": value.shopName || "",
+    "shop captured status": shopName || personalNumber ? (personalValue ? "Captured (personal number)" : "Captured") : "Not captured",
+    "shop name": shopName,
+    "personal number": personalValue,
     "Game score": Number(value.score) || 0,
     "Survey question1 response": value.lastHad || "",
     "Survey question2 response": value.favFlavor || "",
     "district": value.district || "",
-    "shop district": value.shopDistrict || "",
     "timestamp": value.timestamp ? new Date(Number(value.timestamp)).toLocaleString("en-IN") : "",
     "date": value.date || "",
   };
@@ -328,7 +335,7 @@ function normalizeScoreRow(value, index){
 function buildTableRows(rows){
   const body = document.getElementById("rowsBody");
   if(!rows.length){
-    body.innerHTML = '<tr><td colspan="13" style="padding:22px 14px;color:#5b6f64;">No scores found yet.</td></tr>';
+    body.innerHTML = '<tr><td colspan="14" style="padding:22px 14px;color:#5b6f64;">No scores found yet.</td></tr>';
     return;
   }
   body.innerHTML = rows.map(row => `
@@ -339,11 +346,11 @@ function buildTableRows(rows){
       <td>${escapeHtml(row["long"])}</td>
       <td>${escapeHtml(row["shop captured status"])}</td>
       <td>${escapeHtml(row["shop name"])}</td>
+      <td>${escapeHtml(row["personal number"])}</td>
       <td>${escapeHtml(row["Game score"])}</td>
       <td>${escapeHtml(row["Survey question1 response"])}</td>
       <td>${escapeHtml(row["Survey question2 response"])}</td>
       <td>${escapeHtml(row["district"])}</td>
-      <td>${escapeHtml(row["shop district"])}</td>
       <td>${escapeHtml(row["timestamp"])}</td>
       <td>${escapeHtml(row["date"])}</td>
     </tr>
@@ -388,11 +395,11 @@ async function loadScores(){
     "long": v.userLongitude ?? "",
     "shop captured status": "",
     "shop name": "",
+    "personal number": "",
     "Game score": "",
     "Survey question1 response": "",
     "Survey question2 response": "",
     "district": "",
-    "shop district": "",
     "timestamp": v.timestamp ? new Date(Number(v.timestamp)).toLocaleString("en-IN") : "",
     "date": v.date || (v.timestamp ? new Date(Number(v.timestamp)).toLocaleDateString("en-IN") : ""),
   }));
@@ -440,18 +447,23 @@ function downloadAsCsv(rows){
     "long",
     "shop captured status",
     "shop name",
+    "personal number",
     "Game score",
     "Survey question1 response",
     "Survey question2 response",
     "district",
-    "shop district",
     "timestamp",
     "date",
   ];
-  const csv = [
-    headers.join(","),
-    ...rows.map(row => headers.map(header => `"${String(row[header] ?? "").replace(/"/g, '""')}"`).join(",")),
-  ].join("\n");
+  const csvLines = [headers.join(",")];
+  rows.forEach(row => {
+    const values = headers.map(header => {
+      const cell = String(row[header] ?? "").replace(/"/g, '""');
+      return `"${cell}"`;
+    });
+    csvLines.push(values.join(","));
+  });
+  const csv = csvLines.join("\n");
   downloadFile("momsmagic-entries.csv", csv, "text/csv;charset=utf-8");
 }
 
