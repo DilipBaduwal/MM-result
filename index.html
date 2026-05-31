@@ -435,7 +435,7 @@ const auth = firebase.auth();
 const googleProvider = new firebase.auth.GoogleAuthProvider();
 let allScores = [];
 let currentExportRows = [];
-const LEADERBOARD_CUTOFF_HOUR = 20;
+const LEADERBOARD_CUTOFF_TIME = { hours: 23, minutes: 59, seconds: 59, milliseconds: 999 };
 
 function setAdminVisible(isVisible){
   document.getElementById("loginPanel").classList.toggle("is-hidden", isVisible);
@@ -472,7 +472,9 @@ function addLocalDays(date, days){
 
 function getLeaderboardPeriodKeyFromTimestamp(timestamp){
   const date = new Date(Number(timestamp) || Date.now());
-  if(date.getHours() >= LEADERBOARD_CUTOFF_HOUR) return getLocalDateKey(addLocalDays(date, 1));
+  const cutoff = new Date(date);
+  cutoff.setHours(LEADERBOARD_CUTOFF_TIME.hours, LEADERBOARD_CUTOFF_TIME.minutes, LEADERBOARD_CUTOFF_TIME.seconds, LEADERBOARD_CUTOFF_TIME.milliseconds);
+  if(date > cutoff) return getLocalDateKey(addLocalDays(date, 1));
   return getLocalDateKey(date);
 }
 
@@ -482,6 +484,20 @@ function getEntryTimestamp(value){
 
 function getDateKeyFromTimestamp(timestamp){
   return getLocalDateKey(new Date(Number(timestamp) || Date.now()));
+}
+
+function getDateKeyFromDateString(value){
+  const raw = String(value || "").trim();
+  if(!raw) return "";
+  const parts = raw.split(/[\/.-]/).map(part => part.trim()).filter(Boolean);
+  if(parts.length !== 3) return "";
+  const [day, month, year] = parts.map(Number);
+  if(!day || !month || !year) return "";
+  return `${year}-${pad2(month)}-${pad2(day)}`;
+}
+
+function getRecordDateKey(value){
+  return getDateKeyFromDateString(value.date) || getDateKeyFromTimestamp(getScoreTimestamp(value) || getEntryTimestamp(value));
 }
 
 function getScoreEntryTimestamp(value){
@@ -659,8 +675,9 @@ function collectPreviousDayFrozenWinners(rawScores, baseDate = new Date()){
   const groupedByPhone = new Map();
 
   rawScores.forEach(value => {
+    if(getRecordDateKey(value) !== yesterdayKey) return;
+
     const scoreTimestamp = getScoreTimestamp(value) || getEntryTimestamp(value);
-    if(getDateKeyFromTimestamp(scoreTimestamp) !== yesterdayKey) return;
 
     const phoneNumber = getPhoneNumber(value);
     if(!phoneNumber) return;
