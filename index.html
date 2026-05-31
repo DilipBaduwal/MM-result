@@ -398,14 +398,12 @@
         <table>
           <thead>
             <tr>
-              <th>Phone Number</th>
               <th>Player Name</th>
               <th>High Score</th>
-              <th>Shop Name</th>
             </tr>
           </thead>
           <tbody id="winnersBody">
-            <tr><td colspan="4" style="padding:22px 14px;color:#5b6f64;">Click Refresh data to load winners.</td></tr>
+            <tr><td colspan="2" style="padding:22px 14px;color:#5b6f64;">Click Refresh data to load winners.</td></tr>
           </tbody>
         </table>
       </div>
@@ -493,7 +491,8 @@ function getDateKeyFromDateString(value){
 }
 
 function getRecordDateKey(value){
-  return getDateKeyFromDateString(value.date)
+  return getDateKeyFromTimestamp(getEntryTimestamp(value))
+    || getDateKeyFromDateString(value.date)
     || getDateKeyFromDateString(value.winningDate)
     || String(value.leaderboardPeriodKey || "").trim()
     || getDateKeyFromTimestamp(getScoreTimestamp(value) || getEntryTimestamp(value));
@@ -607,19 +606,15 @@ function createTodayRow(value, index){
 }
 
 function createWinnerRow(value, index){
-  const phoneNumber=getPhoneNumber(value);
   const playerName=getPlayerName(value);
-  const shopName=getShopName(value);
   const score=Number(value.score) || 0;
   return {
     rank:Number(value.rank || index + 1) || index + 1,
     score,
     sortRank:Number(value.rank || index + 1) || index + 1,
     html:`<tr>
-      <td>${formatTableCell(phoneNumber)}</td>
       <td>${formatTableCell(playerName)}</td>
       <td>${formatTableCell(score)}</td>
-      <td>${formatTableCell(shopName)}</td>
     </tr>`,
   };
 }
@@ -735,7 +730,7 @@ async function loadScores(){
   statusText.textContent = "Loading dashboard data...";
   setTableLoading("completeBody", 9, "Loading complete database...");
   setTableLoading("todayBody", 8, "Loading today's activity...");
-  setTableLoading("winnersBody", 4, "Loading frozen winners...");
+  setTableLoading("winnersBody", 2, "Loading frozen winners...");
   completeMetaText.textContent = "Loading complete database...";
   todayMetaText.textContent = "Loading today's activity...";
   winnersMetaText.textContent = "Loading frozen winners...";
@@ -782,7 +777,7 @@ async function loadScores(){
 
     renderTableRows("completeBody", completeRows, 9, "No historical records found yet.", row => row.html);
     renderTableRows("todayBody", todayRows, 8, "No eligible records found today.", row => row.html);
-    renderTableRows("winnersBody", winnerRows, 4, "No winners have been finalized yet.", row => row.html);
+    renderTableRows("winnersBody", winnerRows, 2, "No winners have been finalized yet.", row => row.html);
 
     completeMetaText.textContent = `${completeRows.length} historical records loaded.`;
     todayMetaText.textContent = `${todayRows.length} records loaded for ${todayKey}.`;
