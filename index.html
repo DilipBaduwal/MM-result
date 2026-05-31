@@ -398,18 +398,14 @@
         <table>
           <thead>
             <tr>
-              <th>Rank</th>
               <th>Phone Number</th>
               <th>Player Name</th>
-              <th>Winning Score</th>
+              <th>High Score</th>
               <th>Shop Name</th>
-              <th>Entry Timestamp</th>
-              <th>Score Timestamp</th>
-              <th>Winning Date</th>
             </tr>
           </thead>
           <tbody id="winnersBody">
-            <tr><td colspan="8" style="padding:22px 14px;color:#5b6f64;">Click Refresh data to load winners.</td></tr>
+            <tr><td colspan="4" style="padding:22px 14px;color:#5b6f64;">Click Refresh data to load winners.</td></tr>
           </tbody>
         </table>
       </div>
@@ -611,23 +607,16 @@ function createWinnerRow(value, index){
   const phoneNumber=getPhoneNumber(value);
   const playerName=getPlayerName(value);
   const shopName=getShopName(value);
-  const entryTimestamp=getDisplayTimestamp(getEntryTimestamp(value));
-  const scoreTimestamp=getDisplayTimestamp(getScoreTimestamp(value));
   const score=Number(value.score) || 0;
-  const winningDate=String(value.winningDate || value.periodKey || "");
   return {
     rank:Number(value.rank || index + 1) || index + 1,
     score,
     sortRank:Number(value.rank || index + 1) || index + 1,
     html:`<tr>
-      <td>${formatTableCell(value.rank || index + 1)}</td>
       <td>${formatTableCell(phoneNumber)}</td>
       <td>${formatTableCell(playerName)}</td>
       <td>${formatTableCell(score)}</td>
       <td>${formatTableCell(shopName)}</td>
-      <td>${formatTableCell(entryTimestamp)}</td>
-      <td>${formatTableCell(scoreTimestamp)}</td>
-      <td>${formatTableCell(winningDate)}</td>
     </tr>`,
   };
 }
@@ -675,7 +664,8 @@ function collectPreviousDayFrozenWinners(rawScores, baseDate = new Date()){
   const groupedByPhone = new Map();
 
   rawScores.forEach(value => {
-    if(getRecordDateKey(value) !== yesterdayKey) return;
+    const recordDateKey = getRecordDateKey(value);
+    if(recordDateKey !== yesterdayKey) return;
 
     const scoreTimestamp = getScoreTimestamp(value) || getEntryTimestamp(value);
 
@@ -742,7 +732,7 @@ async function loadScores(){
   statusText.textContent = "Loading dashboard data...";
   setTableLoading("completeBody", 9, "Loading complete database...");
   setTableLoading("todayBody", 8, "Loading today's activity...");
-  setTableLoading("winnersBody", 8, "Loading frozen winners...");
+  setTableLoading("winnersBody", 4, "Loading frozen winners...");
   completeMetaText.textContent = "Loading complete database...";
   todayMetaText.textContent = "Loading today's activity...";
   winnersMetaText.textContent = "Loading frozen winners...";
@@ -789,7 +779,7 @@ async function loadScores(){
 
     renderTableRows("completeBody", completeRows, 9, "No historical records found yet.", row => row.html);
     renderTableRows("todayBody", todayRows, 8, "No eligible records found today.", row => row.html);
-    renderTableRows("winnersBody", winnerRows, 8, "No winners have been finalized yet.", row => row.html);
+    renderTableRows("winnersBody", winnerRows, 4, "No winners have been finalized yet.", row => row.html);
 
     completeMetaText.textContent = `${completeRows.length} historical records loaded.`;
     todayMetaText.textContent = `${todayRows.length} records loaded for ${todayKey}.`;
