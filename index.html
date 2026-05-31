@@ -330,34 +330,28 @@
     <section class="panel">
       <div class="panel-head">
         <div>
-          <h2>Daily leaderboard</h2>
-          <div class="meta" id="metaText">Waiting for data...</div>
+          <h2>Complete Database</h2>
+          <div class="meta" id="completeMetaText">Waiting for data...</div>
         </div>
-        <div class="pill"><span class="dot"></span> Live snapshot from <strong style="margin-left:4px;">current day</strong></div>
+        <div class="pill"><span class="dot"></span> <strong style="margin-left:4px;" id="completeCountPill">0 records</strong></div>
       </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
               <th>Sl.no</th>
+              <th>Phone Number</th>
               <th>Name</th>
-              <th>Phone</th>
-              <th>IP address</th>
-              <th>IP provider</th>
-              <th>Lat</th>
-              <th>long</th>
-              <th>shop captured status</th>
-              <th>shop name</th>
-              <th>Game score</th>
-              <th>Survey question1 response</th>
-              <th>Survey question2 response</th>
-              <th>entry timestamp</th>
-              <th>timestamp</th>
-              <th>date</th>
+              <th>Score</th>
+              <th>Shop Name</th>
+              <th>Entry Timestamp</th>
+              <th>Score Timestamp</th>
+              <th>Entry Type</th>
+              <th>Verified Buyer Status</th>
             </tr>
           </thead>
-          <tbody id="rowsBody">
-            <tr><td colspan="15" style="padding:22px 14px;color:#5b6f64;">Click Refresh data to load rows.</td></tr>
+          <tbody id="completeBody">
+            <tr><td colspan="9" style="padding:22px 14px;color:#5b6f64;">Click Refresh data to load rows.</td></tr>
           </tbody>
         </table>
       </div>
@@ -366,25 +360,56 @@
     <section class="panel">
       <div class="panel-head">
         <div>
-          <h2>Frozen winners</h2>
-          <div class="meta" id="winnersMetaText">No winners finalized yet.</div>
+          <h2>Today's Activity</h2>
+          <div class="meta" id="todayMetaText">Waiting for data...</div>
         </div>
-        <div class="pill"><span class="dot"></span> Stored in <strong style="margin-left:4px;">winners</strong></div>
+        <div class="pill"><span class="dot"></span> <strong style="margin-left:4px;" id="todayCountPill">0 records</strong></div>
       </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Period</th>
+              <th>Sl.no</th>
+              <th>Phone Number</th>
+              <th>Player Name</th>
+              <th>Highest Score Today</th>
+              <th>Shop Name</th>
+              <th>Entry Timestamp</th>
+              <th>Score Timestamp</th>
+              <th>Verified Buyer Status</th>
+            </tr>
+          </thead>
+          <tbody id="todayBody">
+            <tr><td colspan="8" style="padding:22px 14px;color:#5b6f64;">Click Refresh data to load rows.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>Previous Day Frozen Winners</h2>
+          <div class="meta" id="winnersMetaText">No winners finalized yet.</div>
+        </div>
+        <div class="pill"><span class="dot"></span> <strong style="margin-left:4px;" id="winnersCountPill">0 records</strong></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
               <th>Rank</th>
-              <th>Name</th>
-              <th>Phone</th>
-              <th>Score</th>
-              <th>Finalized at</th>
+              <th>Phone Number</th>
+              <th>Player Name</th>
+              <th>Winning Score</th>
+              <th>Shop Name</th>
+              <th>Entry Timestamp</th>
+              <th>Score Timestamp</th>
+              <th>Winning Date</th>
             </tr>
           </thead>
           <tbody id="winnersBody">
-            <tr><td colspan="6" style="padding:22px 14px;color:#5b6f64;">Click Refresh data to load winners.</td></tr>
+            <tr><td colspan="8" style="padding:22px 14px;color:#5b6f64;">Click Refresh data to load winners.</td></tr>
           </tbody>
         </table>
       </div>
@@ -455,6 +480,138 @@ function getEntryTimestamp(value){
   return Number(value.entryTimestamp || value.websiteEntryTimestamp || value.visitedAt || value.timestamp || 0) || 0;
 }
 
+function getScoreEntryTimestamp(value){
+  return getEntryTimestamp(value);
+}
+
+function getScoreTimestamp(value){
+  return Number(value.scoreTimestamp || value.timestamp || value.savedAt || getEntryTimestamp(value) || 0) || 0;
+}
+
+function getPlayerName(value){
+  return String(value.name || value.playerName || value.shopName || "Anonymous").trim() || "Anonymous";
+}
+
+function getPhoneNumber(value){
+  return String(value.phoneNumber || value.personalNumber || value.phone || "").trim();
+}
+
+function getShopName(value){
+  return String(value.shopName || value.shop || "").trim();
+}
+
+function getEntryType(value){
+  const raw=String(value.entryType || value.entryMode || "").trim();
+  if(!raw) return value.shopName ? "Shop Scan" : "Direct Location";
+  if(raw === "shop-scan") return "Shop Scan";
+  if(raw === "direct-location") return "Direct Location";
+  return raw;
+}
+
+function getVerifiedBuyerStatus(value){
+  if(value.verifiedBuyerStatus) return String(value.verifiedBuyerStatus);
+  if(value.verifiedBuyer !== undefined) return value.verifiedBuyer ? "Verified" : "Not Verified";
+  return getEntryType(value) === "Shop Scan" ? "Verified" : "Not Verified";
+}
+
+function getDisplayTimestamp(value){
+  return formatTimestamp(value);
+}
+
+function formatTableCell(value){
+  return escapeHtml(value ?? "");
+}
+
+function setTableLoading(bodyId, colspan, message){
+  document.getElementById(bodyId).innerHTML=`<tr><td colspan="${colspan}" style="padding:22px 14px;color:#5b6f64;">${message}</td></tr>`;
+}
+
+function renderTableRows(bodyId, rows, colspan, emptyMessage, rowRenderer){
+  const body=document.getElementById(bodyId);
+  if(!rows.length){
+    body.innerHTML=`<tr><td colspan="${colspan}" style="padding:22px 14px;color:#5b6f64;">${emptyMessage}</td></tr>`;
+    return;
+  }
+  body.innerHTML=rows.map(rowRenderer).join("");
+}
+
+function createCompleteRow(value, index){
+  const phoneNumber=getPhoneNumber(value);
+  const playerName=getPlayerName(value);
+  const shopName=getShopName(value);
+  const entryTimestamp=getDisplayTimestamp(getEntryTimestamp(value));
+  const scoreTimestamp=getDisplayTimestamp(getScoreTimestamp(value));
+  const entryType=getEntryType(value);
+  const verifiedBuyerStatus=getVerifiedBuyerStatus(value);
+  const score=Number(value.score) || 0;
+  return {
+    score,
+    sortEntryTimestamp:getEntryTimestamp(value),
+    sortScoreTimestamp:getScoreTimestamp(value),
+    html:`<tr>
+      <td>${index + 1}</td>
+      <td>${formatTableCell(phoneNumber)}</td>
+      <td>${formatTableCell(playerName)}</td>
+      <td>${formatTableCell(score)}</td>
+      <td>${formatTableCell(shopName)}</td>
+      <td>${formatTableCell(entryTimestamp)}</td>
+      <td>${formatTableCell(scoreTimestamp)}</td>
+      <td>${formatTableCell(entryType)}</td>
+      <td>${formatTableCell(verifiedBuyerStatus)}</td>
+    </tr>`,
+  };
+}
+
+function createTodayRow(value, index){
+  const phoneNumber=getPhoneNumber(value);
+  const playerName=getPlayerName(value);
+  const shopName=getShopName(value);
+  const entryTimestamp=getDisplayTimestamp(getEntryTimestamp(value));
+  const scoreTimestamp=getDisplayTimestamp(getScoreTimestamp(value));
+  const verifiedBuyerStatus=getVerifiedBuyerStatus(value);
+  const score=Number(value.score) || 0;
+  return {
+    score,
+    sortEntryTimestamp:getEntryTimestamp(value),
+    sortScoreTimestamp:getScoreTimestamp(value),
+    html:`<tr>
+      <td>${index + 1}</td>
+      <td>${formatTableCell(phoneNumber)}</td>
+      <td>${formatTableCell(playerName)}</td>
+      <td>${formatTableCell(score)}</td>
+      <td>${formatTableCell(shopName)}</td>
+      <td>${formatTableCell(entryTimestamp)}</td>
+      <td>${formatTableCell(scoreTimestamp)}</td>
+      <td>${formatTableCell(verifiedBuyerStatus)}</td>
+    </tr>`,
+  };
+}
+
+function createWinnerRow(value, index){
+  const phoneNumber=getPhoneNumber(value);
+  const playerName=getPlayerName(value);
+  const shopName=getShopName(value);
+  const entryTimestamp=getDisplayTimestamp(getEntryTimestamp(value));
+  const scoreTimestamp=getDisplayTimestamp(getScoreTimestamp(value));
+  const score=Number(value.score) || 0;
+  const winningDate=String(value.winningDate || value.periodKey || "");
+  return {
+    rank:Number(value.rank || index + 1) || index + 1,
+    score,
+    sortRank:Number(value.rank || index + 1) || index + 1,
+    html:`<tr>
+      <td>${formatTableCell(value.rank || index + 1)}</td>
+      <td>${formatTableCell(phoneNumber)}</td>
+      <td>${formatTableCell(playerName)}</td>
+      <td>${formatTableCell(score)}</td>
+      <td>${formatTableCell(shopName)}</td>
+      <td>${formatTableCell(entryTimestamp)}</td>
+      <td>${formatTableCell(scoreTimestamp)}</td>
+      <td>${formatTableCell(winningDate)}</td>
+    </tr>`,
+  };
+}
+
 function getLeaderboardPeriodKey(value){
   return String(value.leaderboardPeriodKey || getLeaderboardPeriodKeyFromTimestamp(getEntryTimestamp(value)));
 }
@@ -500,57 +657,6 @@ function downloadFile(filename, payload, mimeType){
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function normalizeScoreRow(value, index){
-  const shopName = String(value.shopName || "").trim();
-  const phoneNumber = String(value.phoneNumber || value.personalNumber || "").trim();
-  const phoneValue = phoneNumber || (isPhoneLike(shopName) ? shopName : "");
-  const entryTimestamp = getEntryTimestamp(value);
-  return {
-    "Sl.no": index + 1,
-    "Name": value.name || "",
-    "Phone": phoneValue,
-    "IP address": value.ipAddress || "",
-    "IP provider": value.ipProvider || "",
-    "Lat": value.userLatitude ?? "",
-    "long": value.userLongitude ?? "",
-    "shop captured status": shopName ? "Captured" : "Not captured",
-    "shop name": shopName,
-    "Game score": Number(value.score) || 0,
-    "Survey question1 response": value.lastHad || "",
-    "Survey question2 response": value.favFlavor || "",
-    "entry timestamp": formatTimestamp(entryTimestamp),
-    "timestamp": formatTimestamp(value.timestamp),
-    "date": value.date || "",
-  };
-}
-
-function buildTableRows(rows){
-  const body = document.getElementById("rowsBody");
-  if(!rows.length){
-    body.innerHTML = '<tr><td colspan="15" style="padding:22px 14px;color:#5b6f64;">No scores found yet.</td></tr>';
-    return;
-  }
-  body.innerHTML = rows.map(row => `
-    <tr>
-      <td>${row["Sl.no"]}</td>
-      <td>${escapeHtml(row["Name"])}</td>
-      <td>${escapeHtml(row["Phone"])}</td>
-      <td>${escapeHtml(row["IP address"])}</td>
-      <td>${escapeHtml(row["IP provider"])}</td>
-      <td>${escapeHtml(row["Lat"])}</td>
-      <td>${escapeHtml(row["long"])}</td>
-      <td>${escapeHtml(row["shop captured status"])}</td>
-      <td>${escapeHtml(row["shop name"])}</td>
-      <td>${escapeHtml(row["Game score"])}</td>
-      <td>${escapeHtml(row["Survey question1 response"])}</td>
-      <td>${escapeHtml(row["Survey question2 response"])}</td>
-      <td>${escapeHtml(row["entry timestamp"])}</td>
-      <td>${escapeHtml(row["timestamp"])}</td>
-      <td>${escapeHtml(row["date"])}</td>
-    </tr>
-  `).join("");
-}
-
 function escapeHtml(value){
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -562,118 +668,133 @@ function escapeHtml(value){
 
 async function loadScores(){
   const statusText = document.getElementById("statusText");
-  const metaText = document.getElementById("metaText");
+  const completeMetaText = document.getElementById("completeMetaText");
+  const todayMetaText = document.getElementById("todayMetaText");
+  const winnersMetaText = document.getElementById("winnersMetaText");
   if(!auth.currentUser){
     throw new Error("Please login before loading Firebase data.");
   }
-  statusText.textContent = "Connecting to Firebase...";
-  const snap = await db.ref("scores").once("value");
-  const rows = [];
-  snap.forEach(child => {
-    const value = child.val();
-    if(value && value.score !== undefined){
-      rows.push(value);
-    }
-  });
-  const currentPeriodKey = getLeaderboardPeriodKeyFromTimestamp(Date.now());
-  const winnerPhonesSnap = await db.ref("winnerPhones").once("value");
-  const winnerPhones = new Set();
-  winnerPhonesSnap.forEach(child => {
-    const key = normalizePhone(child.key || child.val()?.phoneNumber || child.val()?.phone || "");
-    if(key) winnerPhones.add(key);
-  });
-  const dailyRows = dedupeBestPerPhone(rows.filter(row => {
-    const phoneKey = getWinnerPhone(row);
-    return getLeaderboardPeriodKey(row) === currentPeriodKey && phoneKey && !winnerPhones.has(phoneKey);
-  }).map(row => ({...row}))).sort(compareEntries);
-  // fetch passive visit logs and include them in exports (name will be 'Unknown')
-  const visitSnap = await db.ref("visitLogs").once("value");
-  const visits = [];
-  visitSnap.forEach(c=>{const v=c.val(); if(v) visits.push(v);});
-  // build export rows: scored entries first, then visits
-  const scoreExportRows = dailyRows.map(normalizeScoreRow);
-  const visitExportRows = visits.map((v,i)=>({
-    "Sl.no": rows.length + i + 1,
-    "Name": v.name || "Unknown",
-    "Phone": v.phoneNumber || "",
-    "IP address": v.ipAddress || "",
-    "IP provider": v.ipProvider || "",
-    "Lat": v.userLatitude ?? "",
-    "long": v.userLongitude ?? "",
-    "shop captured status": "",
-    "shop name": "",
-    "Game score": "",
-    "Survey question1 response": "",
-    "Survey question2 response": "",
-    "entry timestamp": formatTimestamp(v.entryTimestamp || v.websiteEntryTimestamp || v.visitedAt || v.timestamp),
-    "timestamp": formatTimestamp(v.timestamp),
-    "date": v.date || (v.timestamp ? new Date(Number(v.timestamp)).toLocaleDateString("en-IN") : ""),
-  }));
-  const exportRows = scoreExportRows.concat(visitExportRows);
-  allScores = rows; // keep allScores as scored entries for legacy functions
-  buildTableRows(scoreExportRows);
-  document.getElementById("totalRows").textContent = String(dailyRows.length);
-  document.getElementById("topScore").textContent = dailyRows.length ? String(Number(dailyRows[0].score) || 0) : "0";
-  // Determine the chronological latest save (by timestamp) and show player name
-  let latestRow = null;
-  if(rows.length){
-    latestRow = rows.reduce((m, r) => (Number(r.timestamp || 0) > Number(m.timestamp || 0) ? r : m), rows[0]);
-  }
-  if(latestRow && (latestRow.timestamp || latestRow.date || latestRow.name)){
-    const when = latestRow.date || (latestRow.timestamp ? new Date(Number(latestRow.timestamp)).toLocaleString("en-IN") : "-");
-    const who = latestRow.name || "-";
-    document.getElementById("latestSave").textContent = `${who} — ${when}`;
-  } else {
-    document.getElementById("latestSave").textContent = "-";
-  }
-  metaText.textContent = dailyRows.length ? `Loaded ${dailyRows.length} rows for ${currentPeriodKey}.` : `Firebase is reachable, but no leaderboard rows were found for ${currentPeriodKey}.`;
-  statusText.textContent = "Data loaded from Firebase successfully.";
-  // store for download
-  window._exportRowsAll = exportRows;
-  currentExportRows = exportRows;
+  statusText.textContent = "Loading dashboard data...";
+  setTableLoading("completeBody", 9, "Loading complete database...");
+  setTableLoading("todayBody", 8, "Loading today's activity...");
+  setTableLoading("winnersBody", 8, "Loading frozen winners...");
+  completeMetaText.textContent = "Loading complete database...";
+  todayMetaText.textContent = "Loading today's activity...";
+  winnersMetaText.textContent = "Loading frozen winners...";
 
-  const winnersSnap = await db.ref("winners").once("value");
-  const winnerRows = [];
-  winnersSnap.forEach(periodSnap => {
-    const periodKey = periodSnap.key || "";
-    periodSnap.forEach(rankSnap => {
-      const value = rankSnap.val();
-      if(value){
-        winnerRows.push({
-          periodKey,
-          rank: value.rank || rankSnap.key || "",
-          name: value.name || "",
-          phoneNumber: value.phoneNumber || "",
-          score: Number(value.score) || 0,
-          finalizedAt: value.finalizedAt || "",
-        });
+  try {
+    const [scoresSnap, winnersSnap, winnerPhonesSnap] = await Promise.all([
+      db.ref("scores").once("value"),
+      db.ref("winners").once("value"),
+      db.ref("winnerPhones").once("value"),
+    ]);
+
+    const rawScores = [];
+    scoresSnap.forEach(child => {
+      const value = child.val();
+      if(value && value.score !== undefined){
+        rawScores.push({...value, __key: child.key});
       }
     });
-  });
-  winnerRows.sort((a,b)=>String(b.periodKey).localeCompare(String(a.periodKey)) || Number(a.rank)-Number(b.rank));
-  const winnersBody = document.getElementById("winnersBody");
-  const winnersMetaText = document.getElementById("winnersMetaText");
-  if(!winnerRows.length){
-    winnersBody.innerHTML = '<tr><td colspan="6" style="padding:22px 14px;color:#5b6f64;">No winners have been finalized yet.</td></tr>';
-    winnersMetaText.textContent = "No winners finalized yet.";
-  } else {
-    winnersBody.innerHTML = winnerRows.map(row => `
-      <tr>
-        <td>${escapeHtml(row.periodKey)}</td>
-        <td>${escapeHtml(row.rank)}</td>
-        <td>${escapeHtml(row.name)}</td>
-        <td>${escapeHtml(row.phoneNumber)}</td>
-        <td>${escapeHtml(row.score)}</td>
-        <td>${escapeHtml(formatTimestamp(row.finalizedAt))}</td>
-      </tr>
-    `).join("");
-    winnersMetaText.textContent = `${winnerRows.length} winner records loaded from Firebase.`;
+
+    const winnerPhones = new Set();
+    winnerPhonesSnap.forEach(child => {
+      const value = child.val() || {};
+      const key = normalizePhone(child.key || value.phoneNumber || value.phone || "");
+      if(key) winnerPhones.add(key);
+    });
+
+    const todayKey = getLocalDateKey(new Date());
+    const completeRecords = rawScores.slice().sort((a, b) => {
+      const scoreDiff = getScoreTimestamp(b) - getScoreTimestamp(a);
+      if(scoreDiff) return scoreDiff;
+      return getEntryTimestamp(b) - getEntryTimestamp(a);
+    });
+    const completeRows = completeRecords.map((value, index) => createCompleteRow(value, index));
+
+    const todayCandidates = rawScores.filter(value => {
+      const scoreDateKey = getLocalDateKey(new Date(getScoreTimestamp(value) || getEntryTimestamp(value) || Date.now()));
+      const phoneKey = normalizePhone(getPhoneNumber(value));
+      return scoreDateKey === todayKey && phoneKey && !winnerPhones.has(phoneKey);
+    });
+    const todayBest = dedupeBestPerPhone(todayCandidates).sort(compareEntries);
+    const todayRows = todayBest.map((value, index) => createTodayRow(value, index));
+
+    const frozenPeriods = [];
+    winnersSnap.forEach(periodSnap => {
+      const periodKey = periodSnap.key || "";
+      periodSnap.forEach(rankSnap => {
+        const value = rankSnap.val();
+        if(value){
+          frozenPeriods.push({
+            periodKey,
+            rank: value.rank || rankSnap.key || "",
+            name: value.name || "",
+            phoneNumber: value.phoneNumber || "",
+            score: Number(value.score) || 0,
+            shopName: value.shopName || "",
+            entryTimestamp: value.entryTimestamp || value.websiteEntryTimestamp || value.visitedAt || "",
+            scoreTimestamp: value.scoreTimestamp || value.timestamp || "",
+            winningDate: value.winningDate || periodKey,
+          });
+        }
+      });
+    });
+    frozenPeriods.sort((a, b) => String(a.periodKey).localeCompare(String(b.periodKey)));
+    const latestPeriodKey = frozenPeriods.length ? frozenPeriods[frozenPeriods.length - 1].periodKey : "";
+    const frozenRows = latestPeriodKey
+      ? frozenPeriods.filter(row => row.periodKey === latestPeriodKey).sort((a, b) => Number(String(a.rank).replace(/\D/g, "")) - Number(String(b.rank).replace(/\D/g, ""))).slice(0, 3)
+      : [];
+    const winnerRows = frozenRows.map((value, index) => createWinnerRow(value, index));
+
+    renderTableRows("completeBody", completeRows, 9, "No historical records found yet.", row => row.html);
+    renderTableRows("todayBody", todayRows, 8, "No eligible records found today.", row => row.html);
+    renderTableRows("winnersBody", winnerRows, 8, "No winners have been finalized yet.", row => row.html);
+
+    completeMetaText.textContent = `${completeRows.length} historical records loaded.`;
+    todayMetaText.textContent = `${todayRows.length} records loaded for ${todayKey}.`;
+    winnersMetaText.textContent = winnerRows.length ? `Latest frozen period: ${latestPeriodKey}` : "No winners finalized yet.";
+    document.getElementById("completeCountPill").textContent = `${completeRows.length} records`;
+    document.getElementById("todayCountPill").textContent = `${todayRows.length} records`;
+    document.getElementById("winnersCountPill").textContent = `${winnerRows.length} records`;
+
+    const latestRow = completeRecords.length ? completeRecords[0] : null;
+    if(latestRow){
+      const who = getPlayerName(latestRow);
+      const when = getDisplayTimestamp(getScoreTimestamp(latestRow) || getEntryTimestamp(latestRow));
+      document.getElementById("latestSave").textContent = `${who} — ${when || "-"}`;
+    } else {
+      document.getElementById("latestSave").textContent = "-";
+    }
+    document.getElementById("topScore").textContent = todayBest.length ? String(Number(todayBest[0].score) || 0) : "0";
+    statusText.textContent = "Data loaded from Firebase successfully.";
+
+    const completeExportRows = completeRecords.map((value, index) => ({
+      "Sl.no": index + 1,
+      "Phone Number": getPhoneNumber(value),
+      "Player Name": getPlayerName(value),
+      "Score": Number(value.score) || 0,
+      "Shop Name": getShopName(value),
+      "Entry Timestamp": getDisplayTimestamp(getEntryTimestamp(value)),
+      "Score Timestamp": getDisplayTimestamp(getScoreTimestamp(value)),
+      "Entry Type": getEntryType(value),
+      "Verified Buyer Status": getVerifiedBuyerStatus(value),
+    }));
+    currentExportRows = completeExportRows;
+    allScores = rawScores;
+    window._exportRowsAll = completeExportRows;
+    return completeExportRows;
+  } catch (error) {
+    completeMetaText.textContent = "Unable to load complete database.";
+    todayMetaText.textContent = "Unable to load today's activity.";
+    winnersMetaText.textContent = "Unable to load frozen winners.";
+    statusText.textContent = `Load failed: ${error.message}`;
+    throw error;
   }
-  return exportRows;
 }
 
 function getExportRows(){
-  return currentExportRows.length ? currentExportRows : allScores.map(normalizeScoreRow);
+  return currentExportRows;
 }
 
 function downloadAsExcel(rows){
@@ -687,20 +808,14 @@ function downloadAsExcel(rows){
 function downloadAsCsv(rows){
   const headers = [
     "Sl.no",
-    "Name",
-    "IP address",
-    "IP provider",
-    "Lat",
-    "long",
-    "shop captured status",
-    "shop name",
-    "phone number",
-    "Game score",
-    "Survey question1 response",
-    "Survey question2 response",
-    "entry timestamp",
-    "timestamp",
-    "date",
+    "Phone Number",
+    "Player Name",
+    "Score",
+    "Shop Name",
+    "Entry Timestamp",
+    "Score Timestamp",
+    "Entry Type",
+    "Verified Buyer Status",
   ];
   const csvLines = [headers.join(",")];
   rows.forEach(row => {
@@ -781,13 +896,21 @@ auth.onAuthStateChanged(user => {
     document.getElementById("adminUser").textContent = user.email || "Signed in";
     loadScores().catch(error => {
       document.getElementById("statusText").textContent = `Load failed: ${error.message}`;
-      document.getElementById("metaText").textContent = "Unable to connect to Firebase.";
+      document.getElementById("completeMetaText").textContent = "Unable to connect to Firebase.";
+      document.getElementById("todayMetaText").textContent = "Unable to connect to Firebase.";
+      document.getElementById("winnersMetaText").textContent = "Unable to connect to Firebase.";
     });
   } else {
     allScores = [];
     currentExportRows = [];
     document.getElementById("adminUser").textContent = "";
     document.getElementById("adminPassword").value = "";
+    document.getElementById("completeMetaText").textContent = "Waiting for data...";
+    document.getElementById("todayMetaText").textContent = "Waiting for data...";
+    document.getElementById("winnersMetaText").textContent = "No winners finalized yet.";
+    document.getElementById("completeCountPill").textContent = "0 records";
+    document.getElementById("todayCountPill").textContent = "0 records";
+    document.getElementById("winnersCountPill").textContent = "0 records";
   }
 });
 </script>
