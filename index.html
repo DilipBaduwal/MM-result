@@ -324,6 +324,7 @@
     <section class="stats">
       <div class="stat"><div class="label">Total rows</div><div class="value" id="totalRows">0</div></div>
       <div class="stat"><div class="label">Top score</div><div class="value" id="topScore">0</div></div>
+      <div class="stat"><div class="label">Today visits</div><div class="value" id="todayVisits">0</div></div>
       <div class="stat"><div class="label">Latest save</div><div class="value" id="latestSave">-</div></div>
     </section>
 
@@ -488,6 +489,17 @@ function getDateKeyFromDateString(value){
   const [day, month, year] = parts.map(Number);
   if(!day || !month || !year) return "";
   return `${year}-${pad2(month)}-${pad2(day)}`;
+}
+
+function getVisitTimestamp(value){
+  return Number(value.entryTimestamp || value.websiteEntryTimestamp || value.visitedAt || value.timestamp || 0) || 0;
+}
+
+function getVisitDateKey(value){
+  return getDateKeyFromTimestamp(getVisitTimestamp(value))
+    || getDateKeyFromDateString(value.date)
+    || getDateKeyFromDateString(value.visitDate)
+    || "";
 }
 
 function getRecordDateKey(value){
@@ -728,9 +740,10 @@ async function loadScores(){
   winnersMetaText.textContent = "Loading frozen winners...";
 
   try {
-    const [scoresSnap, winnerPhonesSnap] = await Promise.all([
+    const [scoresSnap, winnerPhonesSnap, visitLogsSnap] = await Promise.all([
       db.ref("scores").once("value"),
       db.ref("winnerPhones").once("value"),
+      db.ref("visitLogs").once("value"),
     ]);
 
     const rawScores = [];
@@ -748,7 +761,14 @@ async function loadScores(){
       if(key) winnerPhones.add(key);
     });
 
+    const visitLogs = [];
+    visitLogsSnap.forEach(child => {
+      const value = child.val();
+      if(value) visitLogs.push({...value, __key: child.key});
+    });
+
     const todayKey = getLocalDateKey(new Date());
+    const todayVisitCount = visitLogs.filter(value => getVisitDateKey(value) === todayKey).length;
     const completeRecords = rawScores.slice().sort((a, b) => {
       const scoreDiff = getScoreTimestamp(b) - getScoreTimestamp(a);
       if(scoreDiff) return scoreDiff;
@@ -772,11 +792,13 @@ async function loadScores(){
     renderTableRows("winnersBody", winnerRows, 2, "No winners have been finalized yet.", row => row.html);
 
     completeMetaText.textContent = `${completeRows.length} historical records loaded.`;
-    todayMetaText.textContent = `${todayRows.length} records loaded for ${todayKey}.`;
+    todayMetaText.textContent = `${todayRows.length} score records loaded for ${todayKey}. Total visits: ${todayVisitCount} (includes scan-and-leave).`;
     winnersMetaText.textContent = winnerRows.length ? `Frozen from ${getLocalDateKey(addLocalDays(new Date(), -1))}` : "No winners finalized yet.";
     document.getElementById("completeCountPill").textContent = `${completeRows.length} records`;
     document.getElementById("todayCountPill").textContent = `${todayRows.length} records`;
     document.getElementById("winnersCountPill").textContent = `${winnerRows.length} records`;
+    document.getElementById("totalRows").textContent = String(completeRows.length);
+    document.getElementById("todayVisits").textContent = String(todayVisitCount);
 
     const latestRow = completeRecords.length ? completeRecords[0] : null;
     if(latestRow){
@@ -931,6 +953,10 @@ auth.onAuthStateChanged(user => {
     document.getElementById("completeCountPill").textContent = "0 records";
     document.getElementById("todayCountPill").textContent = "0 records";
     document.getElementById("winnersCountPill").textContent = "0 records";
+    document.getElementById("totalRows").textContent = "0";
+    document.getElementById("topScore").textContent = "0";
+    document.getElementById("todayVisits").textContent = "0";
+    document.getElementById("latestSave").textContent = "-";
   }
 });
 </script>
