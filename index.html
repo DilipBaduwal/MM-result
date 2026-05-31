@@ -784,7 +784,36 @@ async function loadScores(){
       return scoreDateKey === todayKey && phoneKey && !winnerPhones.has(phoneKey);
     });
     const todayBest = dedupeBestPerPhone(todayCandidates).sort(compareEntries);
-    const todayRows = todayBest.map((value, index) => createTodayRow(value, index));
+
+    const scoredPhoneSet = new Set(todayBest.map(value => normalizePhone(getPhoneNumber(value))).filter(Boolean));
+    const visitOnlyRows = visitLogs
+      .filter(value => getVisitDateKey(value) === todayKey)
+      .filter(value => {
+        const phoneKey = normalizePhone(getPhoneNumber(value));
+        return !phoneKey || !scoredPhoneSet.has(phoneKey);
+      })
+      .map((value, index) => {
+        const visitTime = getVisitTimestamp(value);
+        return {
+          __key: `visit:${value.__key || index}`,
+          phoneNumber: getPhoneNumber(value),
+          name: "Unknown",
+          score: 0,
+          shopName: getShopName(value),
+          entryTimestamp: visitTime,
+          scoreTimestamp: visitTime,
+          timestamp: visitTime,
+          entryType: "Visit Only",
+          verifiedBuyerStatus: "Not Verified",
+        };
+      });
+
+    const todayRowsData = [...todayBest, ...visitOnlyRows].sort((a, b) => {
+      const scoreDiff = Number(b.score || 0) - Number(a.score || 0);
+      if(scoreDiff) return scoreDiff;
+      return Number(b.entryTimestamp || b.scoreTimestamp || b.timestamp || 0) - Number(a.entryTimestamp || a.scoreTimestamp || a.timestamp || 0);
+    });
+    const todayRows = todayRowsData.map((value, index) => createTodayRow(value, index));
 
     const previousDayRows = collectPreviousDayFrozenWinners(rawScores, new Date());
     const winnerRows = previousDayRows.map((value, index) => createWinnerRow(value, index));
@@ -794,7 +823,7 @@ async function loadScores(){
     renderTableRows("winnersBody", winnerRows, 2, "No winners have been finalized yet.", row => row.html);
 
     completeMetaText.textContent = `${completeRows.length} historical records loaded.`;
-    todayMetaText.textContent = `${todayRows.length} score records loaded for ${todayKey}. Total visits: ${todayVisitCount} (includes scan-and-leave).`;
+    todayMetaText.textContent = `${todayRows.length} activity rows loaded for ${todayKey}. Visit-only users are listed as Unknown. Total visits: ${todayVisitCount}.`;
     winnersMetaText.textContent = winnerRows.length ? `Frozen from ${getLocalDateKey(addLocalDays(new Date(), -1))}` : "No winners finalized yet.";
     document.getElementById("completeCountPill").textContent = `${completeRows.length} records`;
     document.getElementById("todayCountPill").textContent = `${todayRows.length} records`;
