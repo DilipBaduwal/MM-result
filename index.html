@@ -491,8 +491,7 @@ function getDateKeyFromDateString(value){
 }
 
 function getRecordDateKey(value){
-  return getDateKeyFromTimestamp(getEntryTimestamp(value))
-    || getDateKeyFromDateString(value.date)
+  return getDateKeyFromDateString(value.date)
     || getDateKeyFromDateString(value.winningDate)
     || String(value.leaderboardPeriodKey || "").trim()
     || getDateKeyFromTimestamp(getScoreTimestamp(value) || getEntryTimestamp(value));
@@ -659,36 +658,28 @@ function dedupeBestPerPhone(rows){
 
 function collectPreviousDayFrozenWinners(rawScores, baseDate = new Date()){
   const yesterdayKey = getLocalDateKey(addLocalDays(new Date(baseDate), -1));
-  const groupedByPhone = new Map();
+  const rows = [];
 
   rawScores.forEach(value => {
     const recordDateKey = getRecordDateKey(value);
     if(recordDateKey !== yesterdayKey) return;
 
-    const scoreTimestamp = getScoreTimestamp(value) || getEntryTimestamp(value);
-
-    const phoneNumber = getPhoneNumber(value);
-    if(!phoneNumber) return;
-
-    const row = {
+    rows.push({
       ...value,
-      phoneNumber,
-      scoreTimestamp,
-      entryTimestamp: getEntryTimestamp(value),
       score: Number(value.score) || 0,
-      shopName: getShopName(value),
       name: getPlayerName(value),
       winningDate: yesterdayKey,
-    };
-
-    const existing = groupedByPhone.get(phoneNumber);
-    if(!existing || compareWinnerEntries(row, existing) < 0){
-      groupedByPhone.set(phoneNumber, row);
-    }
+    });
   });
 
-  return Array.from(groupedByPhone.values())
-    .sort(compareWinnerEntries)
+  return rows
+    .sort((a, b) => {
+      const scoreDiff = Number(b.score || 0) - Number(a.score || 0);
+      if(scoreDiff) return scoreDiff;
+      const aTime = Number(a.timestamp || a.scoreTimestamp || a.entryTimestamp || 0);
+      const bTime = Number(b.timestamp || b.scoreTimestamp || b.entryTimestamp || 0);
+      return aTime - bTime;
+    })
     .slice(0, 3)
     .map((value, index) => ({...value, rank: index + 1}));
 }
