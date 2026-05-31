@@ -480,6 +480,10 @@ function getEntryTimestamp(value){
   return Number(value.entryTimestamp || value.websiteEntryTimestamp || value.visitedAt || value.timestamp || 0) || 0;
 }
 
+function getDateKeyFromTimestamp(timestamp){
+  return getLocalDateKey(new Date(Number(timestamp) || Date.now()));
+}
+
 function getScoreEntryTimestamp(value){
   return getEntryTimestamp(value);
 }
@@ -628,6 +632,16 @@ function compareEntries(a, b){
   return Number(a.timestamp || 0) - Number(b.timestamp || 0);
 }
 
+function compareWinnerEntries(a, b){
+  const scoreDiff = Number(b.score || 0) - Number(a.score || 0);
+  if(scoreDiff) return scoreDiff;
+  const scoreTimeDiff = Number(a.scoreTimestamp || 0) - Number(b.scoreTimestamp || 0);
+  if(scoreTimeDiff) return scoreTimeDiff;
+  const entryDiff = Number(a.entryTimestamp || 0) - Number(b.entryTimestamp || 0);
+  if(entryDiff) return entryDiff;
+  return String(a.phoneNumber || "").localeCompare(String(b.phoneNumber || ""));
+}
+
 function dedupeBestPerPhone(rows){
   const byPhone = new Map();
   rows.forEach(row => {
@@ -638,6 +652,40 @@ function dedupeBestPerPhone(rows){
     }
   });
   return Array.from(byPhone.values());
+}
+
+function collectPreviousDayFrozenWinners(rawScores, baseDate = new Date()){
+  const yesterdayKey = getLocalDateKey(addLocalDays(new Date(baseDate), -1));
+  const groupedByPhone = new Map();
+
+  rawScores.forEach(value => {
+    const scoreTimestamp = getScoreTimestamp(value) || getEntryTimestamp(value);
+    if(getDateKeyFromTimestamp(scoreTimestamp) !== yesterdayKey) return;
+
+    const phoneNumber = getPhoneNumber(value);
+    if(!phoneNumber) return;
+
+    const row = {
+      ...value,
+      phoneNumber,
+      scoreTimestamp,
+      entryTimestamp: getEntryTimestamp(value),
+      score: Number(value.score) || 0,
+      shopName: getShopName(value),
+      name: getPlayerName(value),
+      winningDate: yesterdayKey,
+    };
+
+    const existing = groupedByPhone.get(phoneNumber);
+    if(!existing || compareWinnerEntries(row, existing) < 0){
+      groupedByPhone.set(phoneNumber, row);
+    }
+  });
+
+  return Array.from(groupedByPhone.values())
+    .sort(compareWinnerEntries)
+    .slice(0, 3)
+    .map((value, index) => ({...value, rank: index + 1}));
 }
 
 function formatTimestamp(value){
@@ -683,9 +731,8 @@ async function loadScores(){
   winnersMetaText.textContent = "Loading frozen winners...";
 
   try {
-    const [scoresSnap, winnersSnap, winnerPhonesSnap] = await Promise.all([
+    const [scoresSnap, winnerPhonesSnap] = await Promise.all([
       db.ref("scores").once("value"),
-      db.ref("winners").once("value"),
       db.ref("winnerPhones").once("value"),
     ]);
 
@@ -720,32 +767,8 @@ async function loadScores(){
     const todayBest = dedupeBestPerPhone(todayCandidates).sort(compareEntries);
     const todayRows = todayBest.map((value, index) => createTodayRow(value, index));
 
-    const frozenPeriods = [];
-    winnersSnap.forEach(periodSnap => {
-      const periodKey = periodSnap.key || "";
-      periodSnap.forEach(rankSnap => {
-        const value = rankSnap.val();
-        if(value){
-          frozenPeriods.push({
-            periodKey,
-            rank: value.rank || rankSnap.key || "",
-            name: value.name || "",
-            phoneNumber: value.phoneNumber || "",
-            score: Number(value.score) || 0,
-            shopName: value.shopName || "",
-            entryTimestamp: value.entryTimestamp || value.websiteEntryTimestamp || value.visitedAt || "",
-            scoreTimestamp: value.scoreTimestamp || value.timestamp || "",
-            winningDate: value.winningDate || periodKey,
-          });
-        }
-      });
-    });
-    frozenPeriods.sort((a, b) => String(a.periodKey).localeCompare(String(b.periodKey)));
-    const latestPeriodKey = frozenPeriods.length ? frozenPeriods[frozenPeriods.length - 1].periodKey : "";
-    const frozenRows = latestPeriodKey
-      ? frozenPeriods.filter(row => row.periodKey === latestPeriodKey).sort((a, b) => Number(String(a.rank).replace(/\D/g, "")) - Number(String(b.rank).replace(/\D/g, ""))).slice(0, 3)
-      : [];
-    const winnerRows = frozenRows.map((value, index) => createWinnerRow(value, index));
+    const previousDayRows = collectPreviousDayFrozenWinners(rawScores, new Date());
+    const winnerRows = previousDayRows.map((value, index) => createWinnerRow(value, index));
 
     renderTableRows("completeBody", completeRows, 9, "No historical records found yet.", row => row.html);
     renderTableRows("todayBody", todayRows, 8, "No eligible records found today.", row => row.html);
@@ -753,7 +776,7 @@ async function loadScores(){
 
     completeMetaText.textContent = `${completeRows.length} historical records loaded.`;
     todayMetaText.textContent = `${todayRows.length} records loaded for ${todayKey}.`;
-    winnersMetaText.textContent = winnerRows.length ? `Latest frozen period: ${latestPeriodKey}` : "No winners finalized yet.";
+    winnersMetaText.textContent = winnerRows.length ? `Frozen from ${getLocalDateKey(addLocalDays(new Date(), -1))}` : "No winners finalized yet.";
     document.getElementById("completeCountPill").textContent = `${completeRows.length} records`;
     document.getElementById("todayCountPill").textContent = `${todayRows.length} records`;
     document.getElementById("winnersCountPill").textContent = `${winnerRows.length} records`;
