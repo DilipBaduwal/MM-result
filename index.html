@@ -195,6 +195,74 @@
     font-size: 13px;
     line-height: 1.5;
   }
+  .auth-card {
+    max-width: 420px;
+    margin: 12vh auto 0;
+    background: rgba(255,255,255,0.94);
+    border: 1px solid rgba(74,124,89,0.16);
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: var(--shadow);
+  }
+  .auth-card h1 {
+    margin: 0;
+    font-family: "Baloo 2", cursive;
+    font-size: 34px;
+    line-height: 1;
+    color: var(--brand-dark);
+  }
+  .auth-card p {
+    margin: 8px 0 18px;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  .auth-form {
+    display: grid;
+    gap: 12px;
+  }
+  .auth-form label {
+    display: grid;
+    gap: 6px;
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 800;
+  }
+  .auth-form input {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 12px 14px;
+    color: var(--ink);
+    font: inherit;
+    background: #fff;
+  }
+  .auth-form button {
+    border-radius: 14px;
+  }
+  .google-login {
+    width: 100%;
+    margin-top: 10px;
+    border-radius: 14px;
+    background: #fff;
+    color: var(--ink);
+    border: 1px solid var(--line);
+  }
+  .auth-error {
+    min-height: 20px;
+    color: #a12f2f;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  .auth-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: rgba(255,255,255,0.88);
+    font-size: 13px;
+    font-weight: 800;
+  }
+  .is-hidden { display: none !important; }
   .pill {
     display: inline-flex;
     align-items: center;
@@ -221,7 +289,23 @@
 </style>
 </head>
 <body>
-  <div class="shell">
+  <main class="auth-card" id="loginPanel">
+    <h1>Admin Login</h1>
+    <p>Sign in with the Firebase admin account before loading or exporting score data.</p>
+    <form class="auth-form" id="loginForm">
+      <label>Email
+        <input id="adminEmail" type="email" autocomplete="username" required>
+      </label>
+      <label>Password
+        <input id="adminPassword" type="password" autocomplete="current-password" required>
+      </label>
+      <button class="btn-primary" id="loginBtn" type="submit">Login</button>
+      <div class="auth-error" id="loginError"></div>
+    </form>
+    <button class="btn-secondary google-login" id="googleLoginBtn" type="button">Continue with Gmail</button>
+  </main>
+
+  <div class="shell is-hidden" id="adminPanel">
     <section class="hero">
       <div class="title">
         <div class="pill"><span class="dot"></span> Firebase data fetch app</div>
@@ -229,6 +313,8 @@
         <p>Open this app when you want to pull all saved game entries from Firebase. It previews the rows and lets you download the data as Excel or CSV without touching the main game.</p>
       </div>
       <div class="actions">
+        <div class="auth-row" id="adminUser"></div>
+        <button class="btn-secondary" id="logoutBtn">Logout</button>
         <button class="btn-secondary" id="refreshBtn">Refresh data</button>
         <button class="btn-primary" id="downloadXlsxBtn">Download Excel</button>
         <button class="btn-secondary" id="downloadCsvBtn">Download CSV</button>
@@ -255,21 +341,22 @@
             <tr>
               <th>Sl.no</th>
               <th>Name</th>
+              <th>IP address</th>
+              <th>IP provider</th>
               <th>Lat</th>
               <th>long</th>
               <th>shop captured status</th>
               <th>shop name</th>
-              <th>personal number</th>
+              <th>phone number</th>
               <th>Game score</th>
               <th>Survey question1 response</th>
               <th>Survey question2 response</th>
-              <th>district</th>
               <th>timestamp</th>
               <th>date</th>
             </tr>
           </thead>
           <tbody id="rowsBody">
-            <tr><td colspan="13" style="padding:22px 14px;color:#5b6f64;">Click Refresh data to load rows.</td></tr>
+            <tr><td colspan="14" style="padding:22px 14px;color:#5b6f64;">Click Refresh data to load rows.</td></tr>
           </tbody>
         </table>
       </div>
@@ -292,7 +379,20 @@ firebase.initializeApp({
 
 const db = firebase.database();
 const auth = firebase.auth();
+const googleProvider = new firebase.auth.GoogleAuthProvider();
 let allScores = [];
+let currentExportRows = [];
+
+function setAdminVisible(isVisible){
+  document.getElementById("loginPanel").classList.toggle("is-hidden", isVisible);
+  document.getElementById("adminPanel").classList.toggle("is-hidden", !isVisible);
+}
+
+function friendlyAuthError(error){
+  if(error && error.code === "auth/invalid-credential") return "Invalid email or password.";
+  if(error && error.code === "auth/user-disabled") return "This admin account is disabled.";
+  return (error && error.message) || "Login failed. Please try again.";
+}
 
 function isPhoneLike(value){
   return /^\+?[0-9][0-9\s-]{5,}$/.test(String(value || "").trim());
@@ -313,20 +413,21 @@ function downloadFile(filename, payload, mimeType){
 
 function normalizeScoreRow(value, index){
   const shopName = String(value.shopName || "").trim();
-  const personalNumber = String(value.personalNumber || "").trim();
-  const personalValue = personalNumber || (isPhoneLike(shopName) ? shopName : "");
+  const phoneNumber = String(value.phoneNumber || value.personalNumber || "").trim();
+  const phoneValue = phoneNumber || (isPhoneLike(shopName) ? shopName : "");
   return {
     "Sl.no": index + 1,
     "Name": value.name || "",
+    "IP address": value.ipAddress || "",
+    "IP provider": value.ipProvider || "",
     "Lat": value.userLatitude ?? "",
     "long": value.userLongitude ?? "",
-    "shop captured status": shopName || personalNumber ? (personalValue ? "Captured (personal number)" : "Captured") : "Not captured",
+    "shop captured status": shopName ? "Captured" : "Not captured",
     "shop name": shopName,
-    "personal number": personalValue,
+    "phone number": phoneValue,
     "Game score": Number(value.score) || 0,
     "Survey question1 response": value.lastHad || "",
     "Survey question2 response": value.favFlavor || "",
-    "district": value.district || "",
     "timestamp": value.timestamp ? new Date(Number(value.timestamp)).toLocaleString("en-IN") : "",
     "date": value.date || "",
   };
@@ -342,15 +443,16 @@ function buildTableRows(rows){
     <tr>
       <td>${row["Sl.no"]}</td>
       <td>${escapeHtml(row["Name"])}</td>
+      <td>${escapeHtml(row["IP address"])}</td>
+      <td>${escapeHtml(row["IP provider"])}</td>
       <td>${escapeHtml(row["Lat"])}</td>
       <td>${escapeHtml(row["long"])}</td>
       <td>${escapeHtml(row["shop captured status"])}</td>
       <td>${escapeHtml(row["shop name"])}</td>
-      <td>${escapeHtml(row["personal number"])}</td>
+      <td>${escapeHtml(row["phone number"])}</td>
       <td>${escapeHtml(row["Game score"])}</td>
       <td>${escapeHtml(row["Survey question1 response"])}</td>
       <td>${escapeHtml(row["Survey question2 response"])}</td>
-      <td>${escapeHtml(row["district"])}</td>
       <td>${escapeHtml(row["timestamp"])}</td>
       <td>${escapeHtml(row["date"])}</td>
     </tr>
@@ -369,10 +471,10 @@ function escapeHtml(value){
 async function loadScores(){
   const statusText = document.getElementById("statusText");
   const metaText = document.getElementById("metaText");
-  statusText.textContent = "Connecting to Firebase...";
   if(!auth.currentUser){
-    try { await auth.signInAnonymously(); } catch (error) {}
+    throw new Error("Please login before loading Firebase data.");
   }
+  statusText.textContent = "Connecting to Firebase...";
   const snap = await db.ref("scores").once("value");
   const rows = [];
   snap.forEach(child => {
@@ -391,15 +493,16 @@ async function loadScores(){
   const visitExportRows = visits.map((v,i)=>({
     "Sl.no": rows.length + i + 1,
     "Name": v.name || "Unknown",
+    "IP address": v.ipAddress || "",
+    "IP provider": v.ipProvider || "",
     "Lat": v.userLatitude ?? "",
     "long": v.userLongitude ?? "",
     "shop captured status": "",
     "shop name": "",
-    "personal number": "",
+    "phone number": "",
     "Game score": "",
     "Survey question1 response": "",
     "Survey question2 response": "",
-    "district": "",
     "timestamp": v.timestamp ? new Date(Number(v.timestamp)).toLocaleString("en-IN") : "",
     "date": v.date || (v.timestamp ? new Date(Number(v.timestamp)).toLocaleDateString("en-IN") : ""),
   }));
@@ -424,11 +527,12 @@ async function loadScores(){
   statusText.textContent = "Data loaded from Firebase successfully.";
   // store for download
   window._exportRowsAll = exportRows;
+  currentExportRows = exportRows;
   return exportRows;
 }
 
 function getExportRows(){
-  return window._exportRowsAll || allScores.map(normalizeScoreRow);
+  return currentExportRows.length ? currentExportRows : allScores.map(normalizeScoreRow);
 }
 
 function downloadAsExcel(rows){
@@ -443,15 +547,16 @@ function downloadAsCsv(rows){
   const headers = [
     "Sl.no",
     "Name",
+    "IP address",
+    "IP provider",
     "Lat",
     "long",
     "shop captured status",
     "shop name",
-    "personal number",
+    "phone number",
     "Game score",
     "Survey question1 response",
     "Survey question2 response",
-    "district",
     "timestamp",
     "date",
   ];
@@ -471,6 +576,41 @@ document.getElementById("refreshBtn").addEventListener("click", () => {
   loadScores().catch(error => {
     document.getElementById("statusText").textContent = `Load failed: ${error.message}`;
   });
+});
+
+document.getElementById("loginForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  const loginBtn = document.getElementById("loginBtn");
+  const loginError = document.getElementById("loginError");
+  loginBtn.disabled = true;
+  loginError.textContent = "";
+  try {
+    const email = document.getElementById("adminEmail").value.trim();
+    const password = document.getElementById("adminPassword").value;
+    await auth.signInWithEmailAndPassword(email, password);
+  } catch (error) {
+    loginError.textContent = friendlyAuthError(error);
+  } finally {
+    loginBtn.disabled = false;
+  }
+});
+
+document.getElementById("googleLoginBtn").addEventListener("click", async () => {
+  const googleLoginBtn = document.getElementById("googleLoginBtn");
+  const loginError = document.getElementById("loginError");
+  googleLoginBtn.disabled = true;
+  loginError.textContent = "";
+  try {
+    await auth.signInWithPopup(googleProvider);
+  } catch (error) {
+    loginError.textContent = friendlyAuthError(error);
+  } finally {
+    googleLoginBtn.disabled = false;
+  }
+});
+
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+  await auth.signOut();
 });
 
 document.getElementById("downloadXlsxBtn").addEventListener("click", () => {
@@ -493,9 +633,20 @@ document.getElementById("downloadCsvBtn").addEventListener("click", () => {
   document.getElementById("statusText").textContent = "CSV file downloaded.";
 });
 
-loadScores().catch(error => {
-  document.getElementById("statusText").textContent = `Load failed: ${error.message}`;
-  document.getElementById("metaText").textContent = "Unable to connect to Firebase.";
+auth.onAuthStateChanged(user => {
+  setAdminVisible(Boolean(user));
+  if(user){
+    document.getElementById("adminUser").textContent = user.email || "Signed in";
+    loadScores().catch(error => {
+      document.getElementById("statusText").textContent = `Load failed: ${error.message}`;
+      document.getElementById("metaText").textContent = "Unable to connect to Firebase.";
+    });
+  } else {
+    allScores = [];
+    currentExportRows = [];
+    document.getElementById("adminUser").textContent = "";
+    document.getElementById("adminPassword").value = "";
+  }
 });
 </script>
 </body>
