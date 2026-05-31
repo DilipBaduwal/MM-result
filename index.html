@@ -478,7 +478,9 @@ function getEntryTimestamp(value){
 }
 
 function getDateKeyFromTimestamp(timestamp){
-  return getLocalDateKey(new Date(Number(timestamp) || Date.now()));
+  const parsed=Number(timestamp);
+  if(!parsed) return "";
+  return getLocalDateKey(new Date(parsed));
 }
 
 function getDateKeyFromDateString(value){
