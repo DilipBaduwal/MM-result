@@ -491,7 +491,8 @@ function getDateKeyFromDateString(value){
 }
 
 function getRecordDateKey(value){
-  return getDateKeyFromDateString(value.date)
+  return getDateKeyFromTimestamp(getEntryTimestamp(value) || getScoreTimestamp(value))
+    || getDateKeyFromDateString(value.date)
     || getDateKeyFromDateString(value.winningDate)
     || String(value.leaderboardPeriodKey || "").trim()
     || getDateKeyFromTimestamp(getScoreTimestamp(value) || getEntryTimestamp(value));
