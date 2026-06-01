@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Moms Magic Data Fetch</title>
+<title>Moms Magic Firebase Fetch</title>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
@@ -12,28 +12,34 @@
 <style>
   :root {
     --bg: #f4faf5;
-    --card: #ffffff;
-    --ink: #163023;
-    --muted: #5b6f64;
+    --panel: rgba(255,255,255,0.92);
+    --ink: #173124;
+    --muted: #5f7167;
     --brand: #4a7c59;
     --brand-dark: #2f5c3a;
     --accent: #f5c842;
-    --accent-soft: #fff7d1;
-    --line: #d7ead8;
-    --shadow: 0 16px 48px rgba(36, 74, 47, 0.12);
+    --accent-soft: #fff7d2;
+    --line: #dbe9db;
+    --shadow: 0 18px 56px rgba(33, 72, 45, 0.12);
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; min-height: 100%; background: radial-gradient(circle at top, #edf8ef 0%, var(--bg) 45%, #eef3ee 100%); color: var(--ink); font-family: Nunito, sans-serif; }
+  html, body {
+    margin: 0;
+    min-height: 100%;
+    background:
+      radial-gradient(circle at top, #edf8ef 0%, var(--bg) 40%, #eef3ee 100%);
+    color: var(--ink);
+    font-family: Nunito, sans-serif;
+  }
   body:before {
     content: "";
     position: fixed;
     inset: 0;
     pointer-events: none;
     background:
-      linear-gradient(135deg, rgba(74,124,89,0.06) 0 2px, transparent 2px 100%),
+      linear-gradient(135deg, rgba(74,124,89,0.05) 0 2px, transparent 2px 100%),
       linear-gradient(45deg, rgba(245,200,66,0.05) 0 2px, transparent 2px 100%);
     background-size: 48px 48px, 72px 72px;
-    mask-image: linear-gradient(to bottom, rgba(0,0,0,0.9), rgba(0,0,0,0.2));
   }
   .shell {
     position: relative;
@@ -49,7 +55,7 @@
     box-shadow: var(--shadow);
     display: grid;
     gap: 18px;
-    grid-template-columns: 1.3fr 0.9fr;
+    grid-template-columns: 1.2fr 0.8fr;
     align-items: end;
     overflow: hidden;
     position: relative;
@@ -57,30 +63,45 @@
   .hero:after {
     content: "";
     position: absolute;
-    right: -80px;
-    top: -80px;
-    width: 220px;
-    height: 220px;
-    background: rgba(245,200,66,0.22);
+    right: -90px;
+    top: -90px;
+    width: 240px;
+    height: 240px;
+    background: rgba(245,200,66,0.2);
     border-radius: 50%;
-    filter: blur(2px);
   }
-  .title {
-    position: relative;
-    z-index: 1;
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.18);
+    color: rgba(255,255,255,0.92);
+    border-radius: 999px;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
   }
-  .title h1 {
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 6px rgba(245,200,66,0.15);
+  }
+  h1 {
+    margin: 12px 0 0;
     font-family: "Baloo 2", cursive;
-    font-size: clamp(30px, 4vw, 50px);
-    line-height: 0.95;
-    margin: 0;
+    font-size: clamp(30px, 4vw, 52px);
+    line-height: 0.96;
   }
-  .title p {
+  .lead {
     margin: 10px 0 0;
-    color: rgba(255,255,255,0.88);
-    max-width: 62ch;
+    max-width: 64ch;
+    color: rgba(255,255,255,0.9);
     font-size: 14px;
-    line-height: 1.5;
+    line-height: 1.55;
   }
   .actions {
     position: relative;
@@ -101,29 +122,37 @@
   }
   button:hover { transform: translateY(-1px); }
   button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-  .btn-primary { background: var(--accent); color: #392f14; box-shadow: 0 10px 24px rgba(245,200,66,0.28); }
-  .btn-secondary { background: rgba(255,255,255,0.14); color: #fff; border: 1px solid rgba(255,255,255,0.22); }
-  .stats {
+  .btn-primary {
+    background: var(--accent);
+    color: #3a2f12;
+    box-shadow: 0 10px 24px rgba(245,200,66,0.28);
+  }
+  .btn-secondary {
+    background: rgba(255,255,255,0.14);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.22);
+  }
+  .grid {
     margin-top: 18px;
     display: grid;
     gap: 14px;
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-  .stat {
-    background: rgba(255,255,255,0.88);
+  .card {
+    background: var(--panel);
     border: 1px solid rgba(74,124,89,0.12);
     border-radius: 22px;
     padding: 16px 18px;
     box-shadow: 0 10px 26px rgba(29,63,39,0.08);
   }
-  .stat .label {
+  .card .label {
     text-transform: uppercase;
     letter-spacing: 0.08em;
     font-size: 11px;
     color: var(--muted);
     font-weight: 800;
   }
-  .stat .value {
+  .card .value {
     margin-top: 8px;
     font-family: "Baloo 2", cursive;
     font-size: 34px;
@@ -132,7 +161,7 @@
   }
   .panel {
     margin-top: 18px;
-    background: rgba(255,255,255,0.9);
+    background: var(--panel);
     border: 1px solid rgba(74,124,89,0.12);
     border-radius: 28px;
     box-shadow: var(--shadow);
@@ -274,17 +303,10 @@
     font-size: 12px;
     font-weight: 800;
   }
-  .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--brand);
-    box-shadow: 0 0 0 6px rgba(74,124,89,0.1);
-  }
   @media (max-width: 820px) {
     .hero { grid-template-columns: 1fr; }
     .actions { justify-content: flex-start; }
-    .stats { grid-template-columns: 1fr; }
+    .grid { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -307,10 +329,10 @@
 
   <div class="shell is-hidden" id="adminPanel">
     <section class="hero">
-      <div class="title">
-        <div class="pill"><span class="dot"></span> Firebase data fetch app</div>
+      <div>
+        <div class="eyebrow"><span class="dot"></span> Standalone Firebase fetch app</div>
         <h1>Moms Magic Entry Fetch</h1>
-        <p>Open this app when you want to pull all saved game entries from Firebase. It previews the rows and lets you download the data as Excel or CSV without touching the main game.</p>
+        <p class="lead">This is a single HTML file you can upload to GitHub. It connects to Firebase, fetches score rows, shows them in a table, and lets you download the data as Excel or CSV.</p>
       </div>
       <div class="actions">
         <div class="auth-row" id="adminUser"></div>
@@ -321,90 +343,44 @@
       </div>
     </section>
 
-    <section class="stats">
-      <div class="stat"><div class="label">Total rows</div><div class="value" id="totalRows">0</div></div>
-      <div class="stat"><div class="label">Top score</div><div class="value" id="topScore">0</div></div>
-      <div class="stat"><div class="label">Today visits</div><div class="value" id="todayVisits">0</div></div>
-      <div class="stat"><div class="label">Latest save</div><div class="value" id="latestSave">-</div></div>
+    <section class="grid">
+      <div class="card"><div class="label">Total rows</div><div class="value" id="totalRows">0</div></div>
+      <div class="card"><div class="label">Top score</div><div class="value" id="topScore">0</div></div>
+      <div class="card"><div class="label">Today visits</div><div class="value" id="todayVisits">0</div></div>
+      <div class="card"><div class="label">Latest save</div><div class="value" id="latestSave">-</div></div>
     </section>
 
     <section class="panel">
       <div class="panel-head">
         <div>
-          <h2>Complete Database</h2>
-          <div class="meta" id="completeMetaText">Waiting for data...</div>
+          <h2>Firebase scores</h2>
+          <div class="meta" id="metaText">Waiting for data...</div>
         </div>
-        <div class="pill"><span class="dot"></span> <strong style="margin-left:4px;" id="completeCountPill">0 records</strong></div>
+        <div class="pill"><span class="dot"></span> Live snapshot from <strong style="margin-left:4px;">scores</strong></div>
       </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
               <th>Sl.no</th>
-              <th>Phone Number</th>
               <th>Name</th>
-              <th>Score</th>
-              <th>Shop Name</th>
-              <th>Entry Timestamp</th>
-              <th>Score Timestamp</th>
-              <th>Entry Type</th>
-              <th>Verified Buyer Status</th>
+              <th>IP address</th>
+              <th>IP provider</th>
+              <th>Lat</th>
+              <th>long</th>
+              <th>shop captured status</th>
+              <th>shop name</th>
+              <th>Game score</th>
+              <th>Survey question1 response</th>
+              <th>Survey question2 response</th>
+              <th>district</th>
+              <th>shop district</th>
+              <th>timestamp</th>
+              <th>date</th>
             </tr>
           </thead>
-          <tbody id="completeBody">
-            <tr><td colspan="9" style="padding:22px 14px;color:#5b6f64;">Click Refresh data to load rows.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="panel">
-      <div class="panel-head">
-        <div>
-          <h2>Today's Activity</h2>
-          <div class="meta" id="todayMetaText">Waiting for data...</div>
-        </div>
-        <div class="pill"><span class="dot"></span> <strong style="margin-left:4px;" id="todayCountPill">0 records</strong></div>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Sl.no</th>
-              <th>Phone Number</th>
-              <th>Player Name</th>
-              <th>Highest Score Today</th>
-              <th>Shop Name</th>
-              <th>Entry Timestamp</th>
-              <th>Score Timestamp</th>
-              <th>Verified Buyer Status</th>
-            </tr>
-          </thead>
-          <tbody id="todayBody">
-            <tr><td colspan="8" style="padding:22px 14px;color:#5b6f64;">Click Refresh data to load rows.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="panel">
-      <div class="panel-head">
-        <div>
-          <h2>Previous Day Frozen Winners</h2>
-          <div class="meta" id="winnersMetaText">No winners finalized yet.</div>
-        </div>
-        <div class="pill"><span class="dot"></span> <strong style="margin-left:4px;" id="winnersCountPill">0 records</strong></div>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Player Name</th>
-              <th>High Score</th>
-            </tr>
-          </thead>
-          <tbody id="winnersBody">
-            <tr><td colspan="2" style="padding:22px 14px;color:#5b6f64;">Click Refresh data to load winners.</td></tr>
+          <tbody id="rowsBody">
+            <tr><td colspan="15" style="padding:22px 14px;color:#5f7167;">Click Refresh data to load rows.</td></tr>
           </tbody>
         </table>
       </div>
@@ -429,8 +405,6 @@ const db = firebase.database();
 const auth = firebase.auth();
 const googleProvider = new firebase.auth.GoogleAuthProvider();
 let allScores = [];
-let currentExportRows = [];
-const LEADERBOARD_CUTOFF_TIME = { hours: 23, minutes: 59, seconds: 59, milliseconds: 999 };
 
 function setAdminVisible(isVisible){
   document.getElementById("loginPanel").classList.toggle("is-hidden", isVisible);
@@ -441,266 +415,6 @@ function friendlyAuthError(error){
   if(error && error.code === "auth/invalid-credential") return "Invalid email or password.";
   if(error && error.code === "auth/user-disabled") return "This admin account is disabled.";
   return (error && error.message) || "Login failed. Please try again.";
-}
-
-function isPhoneLike(value){
-  return /^\+?[0-9][0-9\s-]{5,}$/.test(String(value || "").trim());
-}
-
-function pad2(value){
-  return String(value).padStart(2, "0");
-}
-
-function normalizePhone(value){
-  return String(value || "").replace(/\D/g, "");
-}
-
-function getLocalDateKey(date = new Date()){
-  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
-}
-
-function addLocalDays(date, days){
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
-}
-
-function getLeaderboardPeriodKeyFromTimestamp(timestamp){
-  const date = new Date(Number(timestamp) || Date.now());
-  const cutoff = new Date(date);
-  cutoff.setHours(LEADERBOARD_CUTOFF_TIME.hours, LEADERBOARD_CUTOFF_TIME.minutes, LEADERBOARD_CUTOFF_TIME.seconds, LEADERBOARD_CUTOFF_TIME.milliseconds);
-  if(date > cutoff) return getLocalDateKey(addLocalDays(date, 1));
-  return getLocalDateKey(date);
-}
-
-function getEntryTimestamp(value){
-  return Number(value.entryTimestamp || value.websiteEntryTimestamp || value.visitedAt || value.timestamp || 0) || 0;
-}
-
-function getDateKeyFromTimestamp(timestamp){
-  const parsed=Number(timestamp);
-  if(!parsed) return "";
-  return getLocalDateKey(new Date(parsed));
-}
-
-function getDateKeyFromDateString(value){
-  const raw = String(value || "").trim();
-  if(!raw) return "";
-  const parts = raw.split(/[\/.-]/).map(part => part.trim()).filter(Boolean);
-  if(parts.length !== 3) return "";
-  const [day, month, year] = parts.map(Number);
-  if(!day || !month || !year) return "";
-  return `${year}-${pad2(month)}-${pad2(day)}`;
-}
-
-function getVisitTimestamp(value){
-  return Number(value.entryTimestamp || value.websiteEntryTimestamp || value.visitedAt || value.timestamp || 0) || 0;
-}
-
-function getVisitDateKey(value){
-  return getDateKeyFromTimestamp(getVisitTimestamp(value))
-    || getDateKeyFromDateString(value.date)
-    || getDateKeyFromDateString(value.visitDate)
-    || "";
-}
-
-function getRecordDateKey(value){
-  return getDateKeyFromTimestamp(getEntryTimestamp(value) || getScoreTimestamp(value))
-    || getDateKeyFromDateString(value.date)
-    || getDateKeyFromDateString(value.winningDate)
-    || String(value.leaderboardPeriodKey || "").trim()
-    || getDateKeyFromTimestamp(getScoreTimestamp(value) || getEntryTimestamp(value));
-}
-
-function getScoreEntryTimestamp(value){
-  return getEntryTimestamp(value);
-}
-
-function getScoreTimestamp(value){
-  return Number(value.scoreTimestamp || value.savedAt || value.timestamp || 0) || 0;
-}
-
-function getPlayerName(value){
-  return String(value.name || value.playerName || value.shopName || "Anonymous").trim() || "Anonymous";
-}
-
-function getPhoneNumber(value){
-  return String(value.phoneNumber || value.personalNumber || value.phone || "").trim();
-}
-
-function getShopName(value){
-  return String(value.shopName || value.shop || "").trim();
-}
-
-function getEntryType(value){
-  const raw=String(value.entryType || value.entryMode || "").trim();
-  if(!raw) return value.shopName ? "Shop Scan" : "Direct Location";
-  if(raw === "shop-scan") return "Shop Scan";
-  if(raw === "direct-location") return "Direct Location";
-  return raw;
-}
-
-function getVerifiedBuyerStatus(value){
-  if(value.verifiedBuyerStatus) return String(value.verifiedBuyerStatus);
-  if(value.verifiedBuyer !== undefined) return value.verifiedBuyer ? "Verified" : "Not Verified";
-  return getEntryType(value) === "Shop Scan" ? "Verified" : "Not Verified";
-}
-
-function getDisplayTimestamp(value){
-  return formatTimestamp(value);
-}
-
-function formatTableCell(value){
-  return escapeHtml(value ?? "");
-}
-
-function setTableLoading(bodyId, colspan, message){
-  document.getElementById(bodyId).innerHTML=`<tr><td colspan="${colspan}" style="padding:22px 14px;color:#5b6f64;">${message}</td></tr>`;
-}
-
-function renderTableRows(bodyId, rows, colspan, emptyMessage, rowRenderer){
-  const body=document.getElementById(bodyId);
-  if(!rows.length){
-    body.innerHTML=`<tr><td colspan="${colspan}" style="padding:22px 14px;color:#5b6f64;">${emptyMessage}</td></tr>`;
-    return;
-  }
-  body.innerHTML=rows.map(rowRenderer).join("");
-}
-
-function createCompleteRow(value, index){
-  const phoneNumber=getPhoneNumber(value);
-  const playerName=getPlayerName(value);
-  const shopName=getShopName(value);
-  const entryTimestamp=getDisplayTimestamp(getEntryTimestamp(value));
-  const scoreTimestamp=getDisplayTimestamp(getScoreTimestamp(value));
-  const entryType=getEntryType(value);
-  const verifiedBuyerStatus=getVerifiedBuyerStatus(value);
-  const score=Number(value.score) || 0;
-  return {
-    score,
-    sortEntryTimestamp:getEntryTimestamp(value),
-    sortScoreTimestamp:getScoreTimestamp(value),
-    html:`<tr>
-      <td>${index + 1}</td>
-      <td>${formatTableCell(phoneNumber)}</td>
-      <td>${formatTableCell(playerName)}</td>
-      <td>${formatTableCell(score)}</td>
-      <td>${formatTableCell(shopName)}</td>
-      <td>${formatTableCell(entryTimestamp)}</td>
-      <td>${formatTableCell(scoreTimestamp)}</td>
-      <td>${formatTableCell(entryType)}</td>
-      <td>${formatTableCell(verifiedBuyerStatus)}</td>
-    </tr>`,
-  };
-}
-
-function createTodayRow(value, index){
-  const phoneNumber=getPhoneNumber(value);
-  const playerName=getPlayerName(value);
-  const shopName=getShopName(value);
-  const entryTimestamp=getDisplayTimestamp(getEntryTimestamp(value));
-  const scoreTimestamp=getDisplayTimestamp(getScoreTimestamp(value));
-  const verifiedBuyerStatus=getVerifiedBuyerStatus(value);
-  const score=Number(value.score) || 0;
-  return {
-    score,
-    sortEntryTimestamp:getEntryTimestamp(value),
-    sortScoreTimestamp:getScoreTimestamp(value),
-    html:`<tr>
-      <td>${index + 1}</td>
-      <td>${formatTableCell(phoneNumber)}</td>
-      <td>${formatTableCell(playerName)}</td>
-      <td>${formatTableCell(score)}</td>
-      <td>${formatTableCell(shopName)}</td>
-      <td>${formatTableCell(entryTimestamp)}</td>
-      <td>${formatTableCell(scoreTimestamp)}</td>
-      <td>${formatTableCell(verifiedBuyerStatus)}</td>
-    </tr>`,
-  };
-}
-
-function createWinnerRow(value, index){
-  const playerName=getPlayerName(value);
-  const score=Number(value.score) || 0;
-  return {
-    rank:Number(value.rank || index + 1) || index + 1,
-    score,
-    sortRank:Number(value.rank || index + 1) || index + 1,
-    html:`<tr>
-      <td>${formatTableCell(playerName)}</td>
-      <td>${formatTableCell(score)}</td>
-    </tr>`,
-  };
-}
-
-function getLeaderboardPeriodKey(value){
-  return String(value.leaderboardPeriodKey || getLeaderboardPeriodKeyFromTimestamp(getEntryTimestamp(value)));
-}
-
-function getWinnerPhone(value){
-  return normalizePhone(value.phoneNumber || value.personalNumber || value.phone || "");
-}
-
-function compareEntries(a, b){
-  const scoreDiff = Number(b.score || 0) - Number(a.score || 0);
-  if(scoreDiff) return scoreDiff;
-  const entryDiff = Number(a.entryTimestamp || 0) - Number(b.entryTimestamp || 0);
-  if(entryDiff) return entryDiff;
-  return Number(a.timestamp || 0) - Number(b.timestamp || 0);
-}
-
-function compareWinnerEntries(a, b){
-  const scoreDiff = Number(b.score || 0) - Number(a.score || 0);
-  if(scoreDiff) return scoreDiff;
-  const scoreTimeDiff = Number(a.scoreTimestamp || 0) - Number(b.scoreTimestamp || 0);
-  if(scoreTimeDiff) return scoreTimeDiff;
-  const entryDiff = Number(a.entryTimestamp || 0) - Number(b.entryTimestamp || 0);
-  if(entryDiff) return entryDiff;
-  return String(a.phoneNumber || "").localeCompare(String(b.phoneNumber || ""));
-}
-
-function dedupeBestPerPhone(rows){
-  const byPhone = new Map();
-  rows.forEach(row => {
-    const phoneKey = getWinnerPhone(row) || `row:${row.__key || Math.random().toString(36).slice(2)}`;
-    const existing = byPhone.get(phoneKey);
-    if(!existing || compareEntries(row, existing) < 0){
-      byPhone.set(phoneKey, row);
-    }
-  });
-  return Array.from(byPhone.values());
-}
-
-function collectPreviousDayFrozenWinners(rawScores, baseDate = new Date()){
-  const yesterdayKey = getLocalDateKey(addLocalDays(new Date(baseDate), -1));
-  const rows = [];
-
-  rawScores.forEach(value => {
-    const recordDateKey = getRecordDateKey(value);
-    if(recordDateKey !== yesterdayKey) return;
-
-    rows.push({
-      ...value,
-      score: Number(value.score) || 0,
-      name: getPlayerName(value),
-      winningDate: yesterdayKey,
-    });
-  });
-
-  return rows
-    .sort((a, b) => {
-      const scoreDiff = Number(b.score || 0) - Number(a.score || 0);
-      if(scoreDiff) return scoreDiff;
-      const aTime = Number(a.timestamp || a.scoreTimestamp || a.entryTimestamp || 0);
-      const bTime = Number(b.timestamp || b.scoreTimestamp || b.entryTimestamp || 0);
-      return aTime - bTime;
-    })
-    .slice(0, 3)
-    .map((value, index) => ({...value, rank: index + 1}));
-}
-
-function formatTimestamp(value){
-  return value ? new Date(Number(value)).toLocaleString("en-IN") : "";
 }
 
 function downloadFile(filename, payload, mimeType){
@@ -725,149 +439,124 @@ function escapeHtml(value){
     .replace(/'/g, "&#39;");
 }
 
+function pad2(value){
+  return String(value).padStart(2, "0");
+}
+
+function getLocalDateKey(date = new Date()){
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
+function getDateKeyFromDateString(value){
+  const raw = String(value || "").trim();
+  if(!raw) return "";
+  const parts = raw.split(/[\/.-]/).map(part => part.trim()).filter(Boolean);
+  if(parts.length !== 3) return "";
+  const [day, month, year] = parts.map(Number);
+  if(!day || !month || !year) return "";
+  return `${year}-${pad2(month)}-${pad2(day)}`;
+}
+
+function getVisitTimestamp(value){
+  return Number(value?.entryTimestamp || value?.websiteEntryTimestamp || value?.visitedAt || value?.timestamp || 0) || 0;
+}
+
+function getVisitDateKey(value){
+  const timestamp = getVisitTimestamp(value);
+  if(timestamp) return getLocalDateKey(new Date(timestamp));
+  return getDateKeyFromDateString(value?.date) || getDateKeyFromDateString(value?.visitDate) || "";
+}
+
+function normalizeScoreRow(value, index){
+  return {
+    "Sl.no": index + 1,
+    "Name": value.name || "",
+    "IP address": value.ipAddress || "",
+    "IP provider": value.ipProvider || "",
+    "Lat": value.userLatitude ?? "",
+    "long": value.userLongitude ?? "",
+    "shop captured status": value.shopName ? "Captured" : "Not captured",
+    "shop name": value.shopName || "",
+    "Game score": Number(value.score) || 0,
+    "Survey question1 response": value.lastHad || "",
+    "Survey question2 response": value.favFlavor || "",
+    "district": value.district || "",
+    "shop district": value.shopDistrict || "",
+    "timestamp": value.timestamp ? new Date(Number(value.timestamp)).toLocaleString("en-IN") : "",
+    "date": value.date || ""
+  };
+}
+
+function buildTableRows(rows){
+  const body = document.getElementById("rowsBody");
+  if(!rows.length){
+    body.innerHTML = '<tr><td colspan="15" style="padding:22px 14px;color:#5f7167;">No scores found yet.</td></tr>';
+    return;
+  }
+  body.innerHTML = rows.map(row => `
+    <tr>
+      <td>${row["Sl.no"]}</td>
+      <td>${escapeHtml(row["Name"])}</td>
+      <td>${escapeHtml(row["IP address"])}</td>
+      <td>${escapeHtml(row["IP provider"])}</td>
+      <td>${escapeHtml(row["Lat"])}</td>
+      <td>${escapeHtml(row["long"])}</td>
+      <td>${escapeHtml(row["shop captured status"])}</td>
+      <td>${escapeHtml(row["shop name"])}</td>
+      <td>${escapeHtml(row["Game score"])}</td>
+      <td>${escapeHtml(row["Survey question1 response"])}</td>
+      <td>${escapeHtml(row["Survey question2 response"])}</td>
+      <td>${escapeHtml(row["district"])}</td>
+      <td>${escapeHtml(row["shop district"])}</td>
+      <td>${escapeHtml(row["timestamp"])}</td>
+      <td>${escapeHtml(row["date"])}</td>
+    </tr>
+  `).join("");
+}
+
 async function loadScores(){
   const statusText = document.getElementById("statusText");
-  const completeMetaText = document.getElementById("completeMetaText");
-  const todayMetaText = document.getElementById("todayMetaText");
-  const winnersMetaText = document.getElementById("winnersMetaText");
+  const metaText = document.getElementById("metaText");
   if(!auth.currentUser){
     throw new Error("Please login before loading Firebase data.");
   }
-  statusText.textContent = "Loading dashboard data...";
-  setTableLoading("completeBody", 9, "Loading complete database...");
-  setTableLoading("todayBody", 8, "Loading today's activity...");
-  setTableLoading("winnersBody", 2, "Loading frozen winners...");
-  completeMetaText.textContent = "Loading complete database...";
-  todayMetaText.textContent = "Loading today's activity...";
-  winnersMetaText.textContent = "Loading frozen winners...";
-
-  try {
-    const [scoresSnap, winnerPhonesSnap, visitLogsSnap] = await Promise.all([
-      db.ref("scores").once("value"),
-      db.ref("winnerPhones").once("value"),
-      db.ref("visitLogs").once("value"),
-    ]);
-
-    const rawScores = [];
-    scoresSnap.forEach(child => {
-      const value = child.val();
-      if(value && value.score !== undefined){
-        rawScores.push({...value, __key: child.key});
-      }
-    });
-
-    const winnerPhones = new Set();
-    winnerPhonesSnap.forEach(child => {
-      const value = child.val() || {};
-      const key = normalizePhone(child.key || value.phoneNumber || value.phone || "");
-      if(key) winnerPhones.add(key);
-    });
-
-    const visitLogs = [];
-    visitLogsSnap.forEach(child => {
-      const value = child.val();
-      if(value) visitLogs.push({...value, __key: child.key});
-    });
-
-    const todayKey = getLocalDateKey(new Date());
-    const todayVisitCount = visitLogs.filter(value => getVisitDateKey(value) === todayKey).length;
-    const completeRecords = rawScores.slice().sort((a, b) => {
-      const scoreDiff = getScoreTimestamp(b) - getScoreTimestamp(a);
-      if(scoreDiff) return scoreDiff;
-      return getEntryTimestamp(b) - getEntryTimestamp(a);
-    });
-    const completeRows = completeRecords.map((value, index) => createCompleteRow(value, index));
-
-    const todayCandidates = rawScores.filter(value => {
-      const scoreDateKey = getLocalDateKey(new Date(getScoreTimestamp(value) || getEntryTimestamp(value) || Date.now()));
-      const phoneKey = normalizePhone(getPhoneNumber(value));
-      return scoreDateKey === todayKey && phoneKey && !winnerPhones.has(phoneKey);
-    });
-    const todayBest = dedupeBestPerPhone(todayCandidates).sort(compareEntries);
-
-    const scoredPhoneSet = new Set(todayBest.map(value => normalizePhone(getPhoneNumber(value))).filter(Boolean));
-    const visitOnlyRows = visitLogs
-      .filter(value => getVisitDateKey(value) === todayKey)
-      .filter(value => {
-        const phoneKey = normalizePhone(getPhoneNumber(value));
-        return !phoneKey || !scoredPhoneSet.has(phoneKey);
-      })
-      .map((value, index) => {
-        const visitTime = getVisitTimestamp(value);
-        return {
-          __key: `visit:${value.__key || index}`,
-          phoneNumber: getPhoneNumber(value),
-          name: "Unknown",
-          score: 0,
-          shopName: getShopName(value),
-          entryTimestamp: visitTime,
-          scoreTimestamp: visitTime,
-          timestamp: visitTime,
-          entryType: "Visit Only",
-          verifiedBuyerStatus: "Not Verified",
-        };
-      });
-
-    const todayRowsData = [...todayBest, ...visitOnlyRows].sort((a, b) => {
-      const scoreDiff = Number(b.score || 0) - Number(a.score || 0);
-      if(scoreDiff) return scoreDiff;
-      return Number(b.entryTimestamp || b.scoreTimestamp || b.timestamp || 0) - Number(a.entryTimestamp || a.scoreTimestamp || a.timestamp || 0);
-    });
-    const todayRows = todayRowsData.map((value, index) => createTodayRow(value, index));
-
-    const previousDayRows = collectPreviousDayFrozenWinners(rawScores, new Date());
-    const winnerRows = previousDayRows.map((value, index) => createWinnerRow(value, index));
-
-    renderTableRows("completeBody", completeRows, 9, "No historical records found yet.", row => row.html);
-    renderTableRows("todayBody", todayRows, 8, "No eligible records found today.", row => row.html);
-    renderTableRows("winnersBody", winnerRows, 2, "No winners have been finalized yet.", row => row.html);
-
-    completeMetaText.textContent = `${completeRows.length} historical records loaded.`;
-    todayMetaText.textContent = `${todayRows.length} activity rows loaded for ${todayKey}. Visit-only users are listed as Unknown. Total visits: ${todayVisitCount}.`;
-    winnersMetaText.textContent = winnerRows.length ? `Frozen from ${getLocalDateKey(addLocalDays(new Date(), -1))}` : "No winners finalized yet.";
-    document.getElementById("completeCountPill").textContent = `${completeRows.length} records`;
-    document.getElementById("todayCountPill").textContent = `${todayRows.length} records`;
-    document.getElementById("winnersCountPill").textContent = `${winnerRows.length} records`;
-    document.getElementById("totalRows").textContent = String(completeRows.length);
-    document.getElementById("todayVisits").textContent = String(todayVisitCount);
-
-    const latestRow = completeRecords.length ? completeRecords[0] : null;
-    if(latestRow){
-      const who = getPlayerName(latestRow);
-      const when = getDisplayTimestamp(getScoreTimestamp(latestRow) || getEntryTimestamp(latestRow));
-      document.getElementById("latestSave").textContent = `${who} — ${when || "-"}`;
-    } else {
-      document.getElementById("latestSave").textContent = "-";
+  statusText.textContent = "Connecting to Firebase...";
+  const [scoresSnap, visitLogsSnap] = await Promise.all([
+    db.ref("scores").once("value"),
+    db.ref("visitLogs").once("value"),
+  ]);
+  const rows = [];
+  scoresSnap.forEach(child => {
+    const value = child.val();
+    if(value && value.score !== undefined){
+      rows.push(value);
     }
-    document.getElementById("topScore").textContent = todayBest.length ? String(Number(todayBest[0].score) || 0) : "0";
-    statusText.textContent = "Data loaded from Firebase successfully.";
+  });
 
-    const completeExportRows = completeRecords.map((value, index) => ({
-      "Sl.no": index + 1,
-      "Phone Number": getPhoneNumber(value),
-      "Player Name": getPlayerName(value),
-      "Score": Number(value.score) || 0,
-      "Shop Name": getShopName(value),
-      "Entry Timestamp": getDisplayTimestamp(getEntryTimestamp(value)),
-      "Score Timestamp": getDisplayTimestamp(getScoreTimestamp(value)),
-      "Entry Type": getEntryType(value),
-      "Verified Buyer Status": getVerifiedBuyerStatus(value),
-    }));
-    currentExportRows = completeExportRows;
-    allScores = rawScores;
-    window._exportRowsAll = completeExportRows;
-    return completeExportRows;
-  } catch (error) {
-    completeMetaText.textContent = "Unable to load complete database.";
-    todayMetaText.textContent = "Unable to load today's activity.";
-    winnersMetaText.textContent = "Unable to load frozen winners.";
-    statusText.textContent = `Load failed: ${error.message}`;
-    throw error;
-  }
+  const todayKey = getLocalDateKey(new Date());
+  let todayVisitCount = 0;
+  visitLogsSnap.forEach(child => {
+    const value = child.val();
+    if(value && getVisitDateKey(value) === todayKey) todayVisitCount += 1;
+  });
+
+  rows.sort((a, b) => Number(b.score) - Number(a.score));
+  allScores = rows;
+  const exportRows = rows.map(normalizeScoreRow);
+  buildTableRows(exportRows);
+  document.getElementById("totalRows").textContent = String(rows.length);
+  document.getElementById("topScore").textContent = rows.length ? String(Number(rows[0].score) || 0) : "0";
+  document.getElementById("todayVisits").textContent = String(todayVisitCount);
+  document.getElementById("latestSave").textContent = rows.length ? (rows[0].date || "-") : "-";
+  metaText.textContent = rows.length
+    ? `Loaded ${rows.length} score rows. Today visits: ${todayVisitCount} (includes scan-and-leave).`
+    : `Firebase is reachable. Today visits: ${todayVisitCount} (includes scan-and-leave).`;
+  statusText.textContent = "Data loaded from Firebase successfully.";
+  return exportRows;
 }
 
 function getExportRows(){
-  return currentExportRows;
+  return allScores.map(normalizeScoreRow);
 }
 
 function downloadAsExcel(rows){
@@ -881,24 +570,25 @@ function downloadAsExcel(rows){
 function downloadAsCsv(rows){
   const headers = [
     "Sl.no",
-    "Phone Number",
-    "Player Name",
-    "Score",
-    "Shop Name",
-    "Entry Timestamp",
-    "Score Timestamp",
-    "Entry Type",
-    "Verified Buyer Status",
+    "Name",
+    "IP address",
+    "IP provider",
+    "Lat",
+    "long",
+    "shop captured status",
+    "shop name",
+    "Game score",
+    "Survey question1 response",
+    "Survey question2 response",
+    "district",
+    "shop district",
+    "timestamp",
+    "date"
   ];
-  const csvLines = [headers.join(",")];
-  rows.forEach(row => {
-    const values = headers.map(header => {
-      const cell = String(row[header] ?? "").replace(/"/g, '""');
-      return `"${cell}"`;
-    });
-    csvLines.push(values.join(","));
-  });
-  const csv = csvLines.join("\n");
+  const csv = [
+    headers.join(","),
+    ...rows.map(row => headers.map(header => `"${String(row[header] ?? "").replace(/"/g, '""')}"`).join(","))
+  ].join("\n");
   downloadFile("momsmagic-entries.csv", csv, "text/csv;charset=utf-8");
 }
 
@@ -969,21 +659,12 @@ auth.onAuthStateChanged(user => {
     document.getElementById("adminUser").textContent = user.email || "Signed in";
     loadScores().catch(error => {
       document.getElementById("statusText").textContent = `Load failed: ${error.message}`;
-      document.getElementById("completeMetaText").textContent = "Unable to connect to Firebase.";
-      document.getElementById("todayMetaText").textContent = "Unable to connect to Firebase.";
-      document.getElementById("winnersMetaText").textContent = "Unable to connect to Firebase.";
+      document.getElementById("metaText").textContent = "Unable to connect to Firebase.";
     });
   } else {
     allScores = [];
-    currentExportRows = [];
     document.getElementById("adminUser").textContent = "";
     document.getElementById("adminPassword").value = "";
-    document.getElementById("completeMetaText").textContent = "Waiting for data...";
-    document.getElementById("todayMetaText").textContent = "Waiting for data...";
-    document.getElementById("winnersMetaText").textContent = "No winners finalized yet.";
-    document.getElementById("completeCountPill").textContent = "0 records";
-    document.getElementById("todayCountPill").textContent = "0 records";
-    document.getElementById("winnersCountPill").textContent = "0 records";
     document.getElementById("totalRows").textContent = "0";
     document.getElementById("topScore").textContent = "0";
     document.getElementById("todayVisits").textContent = "0";
