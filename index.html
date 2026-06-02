@@ -521,7 +521,7 @@ return getEntryTimestamp(value);
 }
 
 function getScoreTimestamp(value){
-return Number(value.scoreTimestamp || value.savedAt || value.timestamp || 0) || 0;
+return Number(value.scoreTimestamp || value.savedAt || 0) || 0;
 }
 
 function getPlayerName(value){
@@ -821,7 +821,7 @@ const todayBest = dedupeBestPerPhone(todayCandidates).sort(compareEntries);
           score: 0,
           shopName: getShopName(value),
           entryTimestamp: visitTime,
-          scoreTimestamp: visitTime,
+          scoreTimestamp: null,
           timestamp: visitTime,
           entryType: "Visit Only",
           verifiedBuyerStatus: "Not Verified",
