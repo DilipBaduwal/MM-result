@@ -107,7 +107,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 margin-top: 18px;
 display: grid;
 gap: 14px;
-grid-template-columns: repeat(3, minmax(0, 1fr));
+grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 .stat {
 background: rgba(255,255,255,0.88);
@@ -325,6 +325,7 @@ box-shadow: 0 0 0 6px rgba(74,124,89,0.1);
 <div class="stat"><div class="label">Total rows</div><div class="value" id="totalRows">0</div></div>
 <div class="stat"><div class="label">Top score</div><div class="value" id="topScore">0</div></div>
 <div class="stat"><div class="label">Today visits</div><div class="value" id="todayVisits">0</div></div>
+<div class="stat"><div class="label">Shop scans</div><div class="value" id="shopScans">0</div></div>
 <div class="stat"><div class="label">Latest save</div><div class="value" id="latestSave">-</div></div>
 </section>
 
@@ -347,6 +348,7 @@ box-shadow: 0 0 0 6px rgba(74,124,89,0.1);
 <th>IP Provider</th>
 <th>Score</th>
 <th>Shop Name</th>
+<th>Shop Scan Count</th>
 <th>Entry Timestamp</th>
 <th>Score Timestamp</th>
 <th>Entry Type</th>
@@ -354,7 +356,7 @@ box-shadow: 0 0 0 6px rgba(74,124,89,0.1);
 </tr>
 </thead>
 <tbody id="completeBody">
-<tr><td colspan="11" style="padding:22px 14px;color:#5b6f64;">Click Refresh data to load rows.</td></tr>
+<tr><td colspan="12" style="padding:22px 14px;color:#5b6f64;">Click Refresh data to load rows.</td></tr>
 </tbody>
 </table>
 </div>
@@ -379,6 +381,7 @@ box-shadow: 0 0 0 6px rgba(74,124,89,0.1);
 <th>IP Provider</th>
 <th>Highest Score Today</th>
 <th>Shop Name</th>
+<th>Shop Scan Count</th>
 <th>Entry Timestamp</th>
 <th>Score Timestamp</th>
 <th>Verified Buyer Status</th>
@@ -579,12 +582,13 @@ return;
 body.innerHTML=rows.map(rowRenderer).join("");
 }
 
-function createCompleteRow(value, index){
+function createCompleteRow(value, index, shopScanCountMap){
 const phoneNumber=getPhoneNumber(value);
 const playerName=getPlayerName(value);
 const ipAddress=getIpAddress(value);
 const ipProvider=getIpProvider(value);
 const shopName=getShopName(value);
+const shopScanCount=shopScanCountMap.get(shopName) || 0;
 const entryTimestamp=getDisplayTimestamp(getEntryTimestamp(value));
 const scoreTimestamp=getDisplayTimestamp(getScoreTimestamp(value));
 const entryType=getEntryType(value);
@@ -602,6 +606,7 @@ html:`<tr>
     <td>${formatTableCell(ipProvider)}</td>
      <td>${formatTableCell(score)}</td>
      <td>${formatTableCell(shopName)}</td>
+     <td>${formatTableCell(shopScanCount)}</td>
      <td>${formatTableCell(entryTimestamp)}</td>
      <td>${formatTableCell(scoreTimestamp)}</td>
      <td>${formatTableCell(entryType)}</td>
@@ -745,6 +750,36 @@ return String(value ?? "")
 .replace(/'/g, "&#39;");
 }
 
+function buildShopScanCountMap(rawScores, visitLogs){
+const shopCountMap = new Map();
+
+function addShop(shopName){
+const key = String(shopName || "").trim();
+if(!key) return;
+shopCountMap.set(key, (shopCountMap.get(key) || 0) + 1);
+}
+
+rawScores.forEach(value => {
+if(getEntryType(value) === "Shop Scan"){
+addShop(getShopName(value));
+}
+});
+
+visitLogs.forEach(value => {
+addShop(getShopName(value));
+});
+
+return shopCountMap;
+}
+
+function getTotalShopScanCount(shopCountMap){
+let total = 0;
+shopCountMap.forEach(count => {
+total += Number(count) || 0;
+});
+return total;
+}
+
 async function loadScores(){
 const statusText = document.getElementById("statusText");
 const completeMetaText = document.getElementById("completeMetaText");
@@ -754,8 +789,8 @@ if(!auth.currentUser){
 throw new Error("Please login before loading Firebase data.");
 }
 statusText.textContent = "Loading dashboard data...";
-setTableLoading("completeBody", 9, "Loading complete database...");
-setTableLoading("todayBody", 8, "Loading today's activity...");
+setTableLoading("completeBody", 12, "Loading complete database...");
+setTableLoading("todayBody", 10, "Loading today's activity...");
 setTableLoading("winnersBody", 2, "Loading frozen winners...");
 completeMetaText.textContent = "Loading complete database...";
 todayMetaText.textContent = "Loading today's activity...";
@@ -789,6 +824,9 @@ const value = child.val();
 if(value) visitLogs.push({...value, __key: child.key});
 });
 
+const shopScanCountMap = buildShopScanCountMap(rawScores, visitLogs);
+const totalShopScans = getTotalShopScanCount(shopScanCountMap);
+
 const todayKey = getLocalDateKey(new Date());
 const todayVisitCount = visitLogs.filter(value => getVisitDateKey(value) === todayKey).length;
 const completeRecords = rawScores.slice().sort((a, b) => {
@@ -796,7 +834,7 @@ const scoreDiff = getScoreTimestamp(b) - getScoreTimestamp(a);
 if(scoreDiff) return scoreDiff;
 return getEntryTimestamp(b) - getEntryTimestamp(a);
 });
-const completeRows = completeRecords.map((value, index) => createCompleteRow(value, index));
+const completeRows = completeRecords.map((value, index) => createCompleteRow(value, index, shopScanCountMap));
 
 const todayCandidates = rawScores.filter(value => {
 const scoreDateKey = getLocalDateKey(new Date(getScoreTimestamp(value) || getEntryTimestamp(value) || Date.now()));
@@ -838,8 +876,8 @@ const todayBest = dedupeBestPerPhone(todayCandidates).sort(compareEntries);
 const previousDayRows = collectPreviousDayFrozenWinners(rawScores, new Date());
 const winnerRows = previousDayRows.map((value, index) => createWinnerRow(value, index));
 
-renderTableRows("completeBody", completeRows, 9, "No historical records found yet.", row => row.html);
-renderTableRows("todayBody", todayRows, 8, "No eligible records found today.", row => row.html);
+renderTableRows("completeBody", completeRows, 12, "No historical records found yet.", row => row.html);
+renderTableRows("todayBody", todayRows, 10, "No eligible records found today.", row => row.html);
 renderTableRows("winnersBody", winnerRows, 2, "No winners have been finalized yet.", row => row.html);
 
 completeMetaText.textContent = `${completeRows.length} historical records loaded.`;
@@ -850,6 +888,7 @@ document.getElementById("todayCountPill").textContent = `${todayRows.length} rec
 document.getElementById("winnersCountPill").textContent = `${winnerRows.length} records`;
 document.getElementById("totalRows").textContent = String(completeRows.length);
 document.getElementById("todayVisits").textContent = String(todayVisitCount);
+document.getElementById("shopScans").textContent = String(totalShopScans);
 
 const latestRow = completeRecords.length ? completeRecords[0] : null;
 if(latestRow){
@@ -870,6 +909,7 @@ const completeExportRows = completeRecords.map((value, index) => ({
 "IP Provider": getIpProvider(value),
 "Score": Number(value.score) || 0,
 "Shop Name": getShopName(value),
+"Shop Scan Count": shopScanCountMap.get(getShopName(value)) || 0,
 "Entry Timestamp": getDisplayTimestamp(getEntryTimestamp(value)),
 "Score Timestamp": getDisplayTimestamp(getScoreTimestamp(value)),
 "Entry Type": getEntryType(value),
@@ -909,6 +949,7 @@ const headers = [
 "IP Provider",
 "Score",
 "Shop Name",
+"Shop Scan Count",
 "Entry Timestamp",
 "Score Timestamp",
 "Entry Type",
@@ -1011,6 +1052,7 @@ document.getElementById("winnersCountPill").textContent = "0 records";
 document.getElementById("totalRows").textContent = "0";
 document.getElementById("topScore").textContent = "0";
 document.getElementById("todayVisits").textContent = "0";
+document.getElementById("shopScans").textContent = "0";
 document.getElementById("latestSave").textContent = "-";
 }
 });
