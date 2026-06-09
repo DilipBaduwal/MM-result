@@ -434,8 +434,8 @@ const auth = firebase.auth();
 const googleProvider = new firebase.auth.GoogleAuthProvider();
 let allScores = [];
 let currentExportRows = [];
-let currentVisitLogExportRows = [];
-let currentShopScanCountExportRows = [];
+let visitLogExportRows = [];
+let shopScanCountExportRows = [];
 const LEADERBOARD_CUTOFF_TIME = { hours: 23, minutes: 59, seconds: 59, milliseconds: 999 };
 
 function setAdminVisible(isVisible){
@@ -725,69 +725,6 @@ function formatTimestamp(value){
 return value ? new Date(Number(value)).toLocaleString("en-IN") : "";
 }
 
-
-function buildVisitLogExportRows(visitLogs){
-return visitLogs
-.slice()
-.sort((a, b) => getVisitTimestamp(b) - getVisitTimestamp(a))
-.map((value, index) => ({
-"Sl.no": index + 1,
-"Phone Number": getPhoneNumber(value),
-"Player Name": getPlayerName(value),
-"IP Address": getIpAddress(value),
-"IP Provider": getIpProvider(value),
-"Shop Name": getShopName(value),
-"Visit Timestamp": getDisplayTimestamp(getVisitTimestamp(value)),
-"Visit Date": getVisitDateKey(value),
-"Entry Type": getEntryType(value),
-"Verified Buyer Status": getVerifiedBuyerStatus(value),
-"Firebase Key": value.__key || "",
-}));
-}
-
-function buildShopScanCountExportRows(rawScores, visitLogs){
-const byShop = new Map();
-
-function ensureShop(shopName){
-const cleanShopName = String(shopName || "").trim();
-if(!cleanShopName) return null;
-if(!byShop.has(cleanShopName)){
-byShop.set(cleanShopName, {
-"Shop Name": cleanShopName,
-"Score Count": 0,
-"Visit Log Count": 0,
-"Shop Scan Count": 0,
-});
-}
-return byShop.get(cleanShopName);
-}
-
-rawScores.forEach(value => {
-const row = ensureShop(getShopName(value));
-if(!row) return;
-row["Score Count"] += 1;
-row["Shop Scan Count"] += 1;
-});
-
-visitLogs.forEach(value => {
-const row = ensureShop(getShopName(value));
-if(!row) return;
-row["Visit Log Count"] += 1;
-row["Shop Scan Count"] += 1;
-});
-
-return Array.from(byShop.values())
-.sort((a, b) => {
-const countDiff = Number(b["Shop Scan Count"] || 0) - Number(a["Shop Scan Count"] || 0);
-if(countDiff) return countDiff;
-return String(a["Shop Name"] || "").localeCompare(String(b["Shop Name"] || ""));
-})
-.map((row, index) => ({
-"Sl.no": index + 1,
-...row,
-}));
-}
-
 function downloadFile(filename, payload, mimeType){
 const blob = payload instanceof Blob ? payload : new Blob([payload], { type: mimeType });
 const url = URL.createObjectURL(blob);
@@ -853,6 +790,26 @@ visitLogsSnap.forEach(child => {
 const value = child.val();
 if(value) visitLogs.push({...value, __key: child.key});
 });
+
+const shopScanMap = new Map();
+function addShopScanCount(shopName, type){
+const shop = String(shopName || "").trim();
+if(!shop) return;
+if(!shopScanMap.has(shop)){
+shopScanMap.set(shop, {
+"Shop Name": shop,
+"Score Count": 0,
+"Visit Count": 0,
+"Shop Scan Count": 0,
+});
+}
+const row = shopScanMap.get(shop);
+if(type === "score") row["Score Count"] += 1;
+if(type === "visit") row["Visit Count"] += 1;
+row["Shop Scan Count"] = row["Score Count"] + row["Visit Count"];
+}
+rawScores.forEach(value => addShopScanCount(getShopName(value), "score"));
+visitLogs.forEach(value => addShopScanCount(getShopName(value), "visit"));
 
 const todayKey = getLocalDateKey(new Date());
 const todayVisitCount = visitLogs.filter(value => getVisitDateKey(value) === todayKey).length;
@@ -940,15 +897,26 @@ const completeExportRows = completeRecords.map((value, index) => ({
 "Entry Type": getEntryType(value),
 "Verified Buyer Status": getVerifiedBuyerStatus(value),
 }));
-const visitLogExportRows = buildVisitLogExportRows(visitLogs);
-const shopScanCountExportRows = buildShopScanCountExportRows(rawScores, visitLogs);
+visitLogExportRows = visitLogs.map((value, index) => ({
+"Sl.no": index + 1,
+"Phone Number": getPhoneNumber(value),
+"Shop Name": getShopName(value),
+"IP Address": getIpAddress(value),
+"IP Provider": getIpProvider(value),
+"Visit Timestamp": getDisplayTimestamp(getVisitTimestamp(value)),
+"Visit Date": getVisitDateKey(value),
+"Entry Type": getEntryType(value),
+"Verified Buyer Status": getVerifiedBuyerStatus(value),
+}));
+
+shopScanCountExportRows = Array.from(shopScanMap.values())
+.sort((a, b) => Number(b["Shop Scan Count"] || 0) - Number(a["Shop Scan Count"] || 0));
+
 currentExportRows = completeExportRows;
-currentVisitLogExportRows = visitLogExportRows;
-currentShopScanCountExportRows = shopScanCountExportRows;
 allScores = rawScores;
 window._exportRowsAll = completeExportRows;
-window._exportRowsVisitLogs = visitLogExportRows;
-window._exportRowsShopScanCount = shopScanCountExportRows;
+window._visitLogExportRows = visitLogExportRows;
+window._shopScanCountExportRows = shopScanCountExportRows;
 return completeExportRows;
 } catch (error) {
 completeMetaText.textContent = "Unable to load complete database.";
@@ -963,22 +931,21 @@ function getExportRows(){
 return currentExportRows;
 }
 
-function downloadAsExcel(){
+function downloadAsExcel(rows){
 const workbook = XLSX.utils.book_new();
 
-const scoresSheet = XLSX.utils.json_to_sheet(currentExportRows);
+const scoresSheet = XLSX.utils.json_to_sheet(currentExportRows || []);
 XLSX.utils.book_append_sheet(workbook, scoresSheet, "Scores");
 
-const visitLogsSheet = XLSX.utils.json_to_sheet(currentVisitLogExportRows);
+const visitLogsSheet = XLSX.utils.json_to_sheet(visitLogExportRows || []);
 XLSX.utils.book_append_sheet(workbook, visitLogsSheet, "Visit Logs");
 
-const shopScanCountSheet = XLSX.utils.json_to_sheet(currentShopScanCountExportRows);
-XLSX.utils.book_append_sheet(workbook, shopScanCountSheet, "Shop Scan Count");
+const shopScanSheet = XLSX.utils.json_to_sheet(shopScanCountExportRows || []);
+XLSX.utils.book_append_sheet(workbook, shopScanSheet, "Shop Scan Count");
 
 const output = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-downloadFile("momsmagic-data-export.xlsx", output, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+downloadFile("momsmagic-data.xlsx", output, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
 }
-
 function downloadAsCsv(rows){
 const headers = [
 "Sl.no",
@@ -1047,12 +1014,13 @@ await auth.signOut();
 });
 
 document.getElementById("downloadXlsxBtn").addEventListener("click", () => {
-if(!currentExportRows.length && !currentVisitLogExportRows.length && !currentShopScanCountExportRows.length){
+const rows = getExportRows();
+if(!rows.length && !visitLogExportRows.length && !shopScanCountExportRows.length){
 document.getElementById("statusText").textContent = "No rows to download yet.";
 return;
 }
-downloadAsExcel();
-document.getElementById("statusText").textContent = "Excel file downloaded with Scores, Visit Logs, and Shop Scan Count sheets.";
+downloadAsExcel(rows);
+document.getElementById("statusText").textContent = "Excel file downloaded.";
 });
 
 document.getElementById("downloadCsvBtn").addEventListener("click", () => {
@@ -1078,8 +1046,8 @@ document.getElementById("winnersMetaText").textContent = "Unable to connect to F
 } else {
 allScores = [];
 currentExportRows = [];
-currentVisitLogExportRows = [];
-currentShopScanCountExportRows = [];
+visitLogExportRows = [];
+shopScanCountExportRows = [];
 document.getElementById("adminUser").textContent = "";
 document.getElementById("adminPassword").value = "";
 document.getElementById("completeMetaText").textContent = "Waiting for data...";
